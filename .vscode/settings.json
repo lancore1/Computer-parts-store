@@ -3,5 +3,8 @@
     "files.exclude": {
         "**/.git": false,
         "**/.venv": false
+    },
+    "files.watcherExclude": {
+    "**/.venv": true
     }
 }
