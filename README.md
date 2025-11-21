@@ -13,7 +13,7 @@ git clone https://github.com/lancore1/Computer-parts-store.git
 cd Computer-parts-store
 ```
 
-### 2. Створення і активація віртуального середовища
+### 2. Створення і активація віртуального середовища (обов'язково)
 
 ```bash
 python -m venv .venv
@@ -39,36 +39,53 @@ pip install -r requirements.txt
 
 ---
 
-## Внесення змін
+## Внесення змін через власну гілку
 
-1. Редагувати або додавати файли проекту.
-2. Додати зміни до Git:
+1. Створити нову гілку для своєї роботи (наприклад, `feature-branch`):
+
+```bash
+git checkout -b feature-branch
+```
+
+2. Редагувати або додавати файли проекту.
+
+3. Додати зміни до Git:
 
 ```bash
 git add .
 ```
 
-3. Зробити коміт:
+4. Зробити коміт:
 
 ```bash
-git commit -m "Опис змін"
+git commit -m "Опис внесених змін"
 ```
 
-4. Перед пушем отримати останні зміни з репозиторію, щоб уникнути конфліктів:
+5. Відправити свою гілку на GitHub:
 
 ```bash
-git pull origin main
+git push origin feature-branch
 ```
 
-5. Відправити зміни на GitHub:
+6. На GitHub створити **Pull Request** з гілки `feature-branch` у `master` репозиторію.
+
+   * В PR можна додати опис змін і попросити рев’ю, якщо потрібно.
+
+7. Після мерджу PR у `master` можна видалити локальну і віддалену гілку:
 
 ```bash
-git push origin main
+git branch -d feature-branch
+git push origin --delete feature-branch
 ```
 
----
+8. Перед створенням нової гілки завжди оновлювати `master`:
 
-## Запуск проекту
+```bash
+git checkout master
+git pull origin master
+```
+
+## Запуск проекту 
 
 ```bash
 python main.py
