@@ -1,6 +1,7 @@
 {
     "git.ignoreLimitWarning": true,
     "files.exclude": {
-        "**/.git": false
+        "**/.git": false,
+        "**/.venv": false
     }
 }
