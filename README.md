@@ -36,7 +36,7 @@ source .venv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
-
+#### Бажано встановити ось цю версію мови: Python 3.13.9
 ---
 
 ## Внесення змін через власну гілку
