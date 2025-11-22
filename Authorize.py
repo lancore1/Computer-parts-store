@@ -29,8 +29,11 @@ def Authorize_window(*, app: ctk.CTk) -> None:
     frame_title.propagate(False)
 
     #Image for title
-    img = Image.open("images/image_title.png")
-    image_title = ctk.CTkImage(light_image=img, dark_image=img,size=(50,50))
+    image_title = ctk.CTkImage(
+        light_image=Image.open("images/image_title.png"), 
+        dark_image=Image.open("images/image_title.png"),
+        size=(50,50)
+    )
 
     #Label for image
     label_img = ctk.CTkLabel(master=frame_title, text="", image=image_title)
