@@ -2,7 +2,7 @@ from PIL import Image
 import customtkinter as ctk
 
 
-def get_login_and_password(login:str,password:str) -> bool:
+def validate_login_and_password(login:str,password:str) -> bool:
     pass
 
 
