@@ -150,6 +150,34 @@ def Main_window(*, app: ctk.CTk) -> None:
     )
     button_search.place(relx=0.90, rely=0.5, anchor="center")
 
+
+    # Frame for user info
+    frame_user = ctk.CTkFrame(master=frame_top_widget,width=200,height=90,fg_color="transparent")
+    frame_user.place(x=1680,y=30)
+    frame_user.propagate(False)
+
+    # User name
+    user_label = ctk.CTkLabel(   
+        master=frame_user,  
+        text="Прізвище І.Б.", 
+        width=10, 
+        height=1, 
+        fg_color="transparent", 
+        text_color="#FFFFFF", 
+        font=("Lato", 24, "bold")
+    )
+    user_label.grid(row=0,column=0,padx=0)
+
+    # User image
+    user_image = ctk.CTkImage(
+        light_image=Image.open("images/image_title_reverse.png"),
+        dark_image=Image.open("images/image_title_reverse.png"),
+        size=(50,50)
+    )
+    label_user_image = ctk.CTkLabel(master=frame_user, image=user_image, text="")
+    label_user_image.grid(row=0, column=1, padx=10)
+
+
 if __name__ == "__main__":
     APP = ctk.CTk()
     Main_window(app = APP)
