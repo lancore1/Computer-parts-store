@@ -1,5 +1,12 @@
 from PIL import Image
+import tkinter as tk
+from tkinter import ttk
 import customtkinter as ctk
+from DB_connector import CONNECT
+
+
+def sort_by_cost():
+    pass    
 
 
 def Main_window(*, app: ctk.CTk) -> None:
@@ -152,19 +159,19 @@ def Main_window(*, app: ctk.CTk) -> None:
 
 
     # Frame for user info
-    frame_user = ctk.CTkFrame(master=frame_top_widget,width=200,height=90,fg_color="transparent")
-    frame_user.place(x=1680,y=30)
+    frame_user = ctk.CTkFrame(master=frame_top_widget,width=200,height=65,fg_color="transparent")
+    frame_user.place(x=1380,y=30)
     frame_user.propagate(False)
 
     # User name
     user_label = ctk.CTkLabel(   
         master=frame_user,  
-        text="Прізвище І.Б.", 
+        text="Прізвище", 
         width=10, 
-        height=1, 
+        height=1    , 
         fg_color="transparent", 
         text_color="#FFFFFF", 
-        font=("Lato", 24, "bold")
+        font=("Lato", 20, "bold")
     )
     user_label.grid(row=0,column=0,padx=0)
 
@@ -178,6 +185,88 @@ def Main_window(*, app: ctk.CTk) -> None:
     label_user_image.grid(row=0, column=1, padx=10)
 
 
+    # Frame table for product
+    frame_table = ctk.CTkFrame(master=app, fg_color="transparent", border_width=1)
+    frame_table.pack(side="right", padx=(220,0),pady=(110,0),fill="both", expand=True)
+    
+    # Label for table
+    columns = ("id", "name", "model","specs","category","vendor","supplier","available_quantity","cost")
+    scrollbar_y = ctk.CTkScrollbar(frame_table, orientation="vertical")
+    scrollbar_y.pack(side="right", fill="y")
+    
+    # Table for product
+    tree_table = ttk.Treeview(master=frame_table,columns=columns, show="headings",xscrollcommand=scrollbar_y.set)
+    tree_table.heading("id", text="№")
+    tree_table.heading("name", text="Назва")
+    tree_table.heading("model", text="Модель"),
+    tree_table.heading("specs", text="Характеристики"),
+    tree_table.heading("category", text="Тип категорії"),
+    tree_table.heading("vendor", text="Виробник"),
+    tree_table.heading("supplier", text="Постачальник"),
+    tree_table.heading("available_quantity", text="В наявності"),
+    tree_table.heading("cost", text="Ціна товару")
+    tree_table.pack(expand=True,fill="both",padx=(5,5),pady=(5,5))
+
+
+    # Style for table
+    style = ttk.Style()
+    style.theme_use("clam")  
+    style.configure("Treeview", font=("Lato", 13,"normal"))       
+    style.configure("Treeview.Heading",  font=("Lato", 16,"bold"))  
+
+    # Wigth
+    tree_table.column("id", width=40)  
+    tree_table.column("name", width=230)  
+    tree_table.column("model", width=120)  
+    tree_table.column("specs", width=450)  
+    tree_table.column("vendor", width=120)  
+    tree_table.column("category", width=175)  
+    tree_table.column("available_quantity", width=150)  
+    tree_table.column("cost", width=150)  
+
+
+    # Query for data in table
+    cursor_tab = CONNECT.cursor()
+    # Big Query
+    query_tab = """
+    SELECT 
+        p.product_id,
+        p.product_name,
+        p.product_model,
+        GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
+        c.category_name,
+        v.vendor_name,
+        supp.supplier_name,
+        p.product_quantity,
+        p.product_price
+    FROM product p
+    JOIN product_specification ps ON p.product_id = ps.product_id
+    JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
+    JOIN category c ON c.category_id = cs.category_id
+    JOIN vendor v USING(vendor_id)
+    JOIN supplier_product sp ON sp.product_id=p.product_id
+    JOIN supply suppl ON suppl.supply_id=sp.supply_id
+    JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
+    GROUP BY
+        p.product_id,
+        p.product_name,
+        p.product_model,
+        c.category_name,
+        v.vendor_name,
+        supp.supplier_name,
+        p.product_quantity,
+        p.product_price; 
+    """
+    cursor_tab.execute(query_tab) # exucutes an SQL query
+    response_tab = cursor_tab.fetchall() # converts the response into a list of tuples
+
+    # Add data in table by row
+    for row in response_tab:
+        tree_table.insert("", "end", values=row)
+   
+
+
+    
 if __name__ == "__main__":
     APP = ctk.CTk()
     Main_window(app = APP)
