@@ -5,8 +5,7 @@ import customtkinter as ctk
 from DB_connector import CONNECT
 
 
-def sort_by_cost():
-    pass    
+
 
 
 def Main_window(*, app: ctk.CTk) -> None:
@@ -92,7 +91,27 @@ def Main_window(*, app: ctk.CTk) -> None:
     )
     label_sort.grid(row=0,column=0,padx=0)
 
-    sort = ["Від дешевих до дорогих", "Від дорогих до дешевих"] #test data
+
+    #Function who sort data in table
+    def sort_by_cost(event=None) -> None: 
+        choose = combobox_sort.get()
+        tree_list = [tree_table.item(row)["values"] for row in tree_table.get_children()] #the same as the one below, 2 options
+        # for row in tree_table.get_children():
+        #     tree_list.append(tree_table.item(row)["values"])
+        #     print(tree_table.item(row)["values"])
+        
+        print(tree_list)
+        if choose == "Від дешевих до дорогих":
+            tree_list.sort(key=lambda item: float(item[-1]))
+        if choose == "Від дорогих до дешевих":
+            tree_list.sort(key=lambda item: float(item[-1]),reverse=True)
+
+        for row in tree_table.get_children():
+            tree_table.delete(row)
+
+        for row in tuple(tree_list):
+            tree_table.insert("", "end", values=row)
+             
 
     #Combobox for sort
     combobox_sort = ctk.CTkComboBox(
@@ -109,7 +128,8 @@ def Main_window(*, app: ctk.CTk) -> None:
         dropdown_text_color="#000000",
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
-        values=sort
+        values=["Від дешевих до дорогих", "Від дорогих до дешевих"],
+        command=sort_by_cost
     )
     combobox_sort.grid(row=1,column=0,padx=(90,0), pady=(19,0))
 
@@ -259,11 +279,10 @@ def Main_window(*, app: ctk.CTk) -> None:
     """
     cursor_tab.execute(query_tab) # exucutes an SQL query
     response_tab = cursor_tab.fetchall() # converts the response into a list of tuples
-
+    
     # Add data in table by row
     for row in response_tab:
         tree_table.insert("", "end", values=row)
-   
 
 
     
