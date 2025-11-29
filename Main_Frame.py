@@ -5,69 +5,109 @@ import customtkinter as ctk
 from DB_connector import CONNECT
 
 
-#Function who sort data in table by cost
+current_products = []  # stores current table data for filtering
+
+
+# Function who sort data in table by cost
 def sort_by_cost(combobox, tree) -> None: 
+    # get choose from combobox
     choose = combobox.get()
-    tree_list = [tree.item(row)["values"] for row in tree.get_children()] #the same as the one below, 2 options
+
+    # get all data from table as list
+    tree_list = [tree.item(row)["values"] for row in tree.get_children()]
+    # alternative way using for loop:
     # for row in tree_table.get_children():
     #     tree_list.append(tree_table.item(row)["values"])
     #     print(tree_table.item(row)["values"])
-    print(tree_list)
+    # print(tree_list)
+
+    # sort data by cost
     if choose == "Від дешевих до дорогих":
         tree_list.sort(key=lambda item: float(item[-1]))
     if choose == "Від дорогих до дешевих":
-        tree_list.sort(key=lambda item: float(item[-1]),reverse=True)
+        tree_list.sort(key=lambda item: float(item[-1]), reverse=True)
 
-    for row in tree.get_children():
-        tree.delete(row)
+    # remove all data in table, work faster than delete by row in for
+    tree.delete(*tree.get_children())
 
+    # populate table with sorted data
     for row in tuple(tree_list):
         tree.insert("", "end", values=row)
 
 
-#Function who filtered data in table by type
-def filter_by_type(combobox, tree, all_products:list[tuple]) -> None:
+# Function who filtered data in table by type category
+def filter_by_type(combobox, tree) -> None:
+    global current_products
+
     # get choose
     choose = combobox.get()
 
-    # clear table
-    for row in tree.get_children():
-        tree.delete(row)
-    
-    list_for_product = []
+    # remove all data in table, work faster than delete by row in for 
+    tree.delete(*tree.get_children())
+
+    # saved data who filtered 
+    filtered = []
+
+    # save the data source for the table as current data 
+    sourse = current_products
 
     if choose == "Усі":
-        for item in all_products:
-            list_for_product.append(item)
+        # we copy the current data, keeping in mind that current_products contains all the default data.
+        filtered = current_products.copy()
 
     if choose == "CPU":
-        for item in all_products:
-            if item[4] == "Процесор":
-                list_for_product.append(item)
+        filtered = [item for item in sourse if item[4] == "Процесор"]
 
     if choose == "GPU":
-        for item in all_products:
-            if item[4] == "Відеокарта":
-                list_for_product.append(item)
+        filtered = [item for item in sourse if item[4] == "Відеокарта"]
+
     if choose == "Motherboard":
+        filtered = [item for item in sourse if item[4] == "Материнська плата"]
+
+    # populate table with filtered data
+    tree.delete(*tree.get_children())
+    for row in tuple(filtered):
+        tree.insert("", "end", values=row)
+
+
+# Function who filtere data by entered text from entry search
+def search_by_entry(entry_search, tree, all_products) -> None:
+    global current_products
+
+    text = entry_search.get().lower().strip()
+
+    # clear table 
+    tree.delete(*tree.get_children())
+
+    filtered_list = []
+
+    # if text is empty
+    if text == "":
+        current_products = all_products.copy()
+    else:
+        # if text not empty, we save copy in current_products from filtered_list
         for item in all_products:
-            if item[4] == "Материнська плата":
-                list_for_product.append(item)
+            if text in item[1].lower():
+                filtered_list.append(item)
+        current_products = filtered_list.copy()
 
-    for row in tree.get_children():
-        tree.delete(row)
-
-    for row in tuple(list_for_product):
+    # populate table with current_products
+    tree.delete(*tree.get_children())
+    for row in tuple(current_products):
         tree.insert("", "end", values=row)
 
 
 
+    
 def Main_window(*, app: ctk.CTk) -> None:
+    global current_products
+
     app.geometry("1920x1080")
     app.title("Головне меню")
     app.configure(fg_color="#FFFFFF")
-
+    # open app in full screen
     app.after(50, lambda: app.state("zoomed"))
+
     #Frame left widget
     frame_left_widget = ctk.CTkFrame(master=app,
         width=220,
@@ -106,8 +146,6 @@ def Main_window(*, app: ctk.CTk) -> None:
     )
     label_category.grid(row=0,column=0,padx=0)
 
-    category = ["Усі","CPU","GPU","Motherboard"] #test data
-
     #Combobox type category
     combobox_category = ctk.CTkComboBox(
         master=frame_type_category,
@@ -123,8 +161,8 @@ def Main_window(*, app: ctk.CTk) -> None:
         dropdown_text_color="#000000",
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
-        values=category,
-        command=lambda value: filter_by_type(combobox_category,tree_table,all_products)
+        values=["Усі","CPU","GPU","Motherboard"],
+        command=lambda value: filter_by_type(combobox_category,tree_table)
     )
     combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
 
@@ -167,7 +205,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     )
     combobox_sort.grid(row=1,column=0,padx=(90,0), pady=(19,0))
 
-    # Frame for search (це буде сірий фон)
+    # Frame for search 
     frame_search = ctk.CTkFrame(
         master=frame_top_widget,
         width=480,
@@ -194,6 +232,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     )
     entry_search.grid(row=0,column=0)
 
+
     # Button for search
     button_search = ctk.CTkButton(
         master=frame_search,
@@ -207,9 +246,56 @@ def Main_window(*, app: ctk.CTk) -> None:
         fg_color="#D9D9D9",
         bg_color="#D9D9D9",
         hover_color="#BFBFBF",
-        corner_radius=20
+        corner_radius=20,
+        command=lambda: search_by_entry(entry_search,tree_table,all_products)
+
     )
     button_search.place(relx=0.90, rely=0.5, anchor="center")
+    # add hotkey for button search on press "ENTER"
+    app.bind("<Return>", lambda event: button_search.invoke())
+
+
+    # Frame for button sale and supply
+    frame_buttons_sale_supply = ctk.CTkFrame(master=frame_top_widget, width=200, height=65,fg_color="transparent")
+    frame_buttons_sale_supply.place(relx=0.725, rely=0.5, anchor="w") 
+
+    # Button for sale
+    button_sale = ctk.CTkButton(
+        master=frame_buttons_sale_supply,
+        text="Продаж",
+        width=115,
+        height=39,
+        corner_radius=5,
+        fg_color="#34D399",
+        hover_color="#2ECC71",
+        font=("Lato", 14, "bold"),
+        image=ctk.CTkImage(
+            light_image=Image.open("images/sale.png"), 
+            dark_image=Image.open("images/sale.png"), 
+            size=(20, 20)
+        ),
+        compound="right" 
+    )
+    button_sale.pack(side="left", padx=(0,10))
+
+    # Button for supply
+    button_supply = ctk.CTkButton(
+        master=frame_buttons_sale_supply,
+        text="Постачання",
+        width=115,
+        height=39,
+        corner_radius=5,
+        fg_color="#FFB030",
+        hover_color="#FF9933",
+        font=("Lato", 14, "bold"),
+        image=ctk.CTkImage(
+            light_image=Image.open("images/supply.png"), 
+            dark_image=Image.open("images/supply.png"), 
+            size=(20, 20)
+        ),
+        compound="right"
+    )
+    button_supply.pack(side="left")
 
 
     # Frame for user info
@@ -276,7 +362,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     tree_table.column("specs", width=450)  
     tree_table.column("vendor", width=120)  
     tree_table.column("category", width=175)  
-    tree_table.column("available_quantity", width=150)  
+    tree_table.column("available_quantity", width=138)  
     tree_table.column("cost", width=150)  
 
 
@@ -314,12 +400,15 @@ def Main_window(*, app: ctk.CTk) -> None:
     """
     cursor_tab.execute(query_tab) # exucutes an SQL query
     all_products = cursor_tab.fetchall() # converts the response into a list of tuples
-    
+
     # Add data in table by row
     for row in all_products:
         tree_table.insert("", "end", values=row)
+        # DEFAULT value for current_products
+        current_products.append(row)
     
     
+
     
 if __name__ == "__main__":
     APP = ctk.CTk()
