@@ -5,6 +5,60 @@ import customtkinter as ctk
 from DB_connector import CONNECT
 
 
+#Function who sort data in table by cost
+def sort_by_cost(combobox, tree) -> None: 
+    choose = combobox.get()
+    tree_list = [tree.item(row)["values"] for row in tree.get_children()] #the same as the one below, 2 options
+    # for row in tree_table.get_children():
+    #     tree_list.append(tree_table.item(row)["values"])
+    #     print(tree_table.item(row)["values"])
+    print(tree_list)
+    if choose == "Від дешевих до дорогих":
+        tree_list.sort(key=lambda item: float(item[-1]))
+    if choose == "Від дорогих до дешевих":
+        tree_list.sort(key=lambda item: float(item[-1]),reverse=True)
+
+    for row in tree.get_children():
+        tree.delete(row)
+
+    for row in tuple(tree_list):
+        tree.insert("", "end", values=row)
+
+
+#Function who filtered data in table by type
+def filter_by_type(combobox, tree, all_products:list[tuple]) -> None:
+    # get choose
+    choose = combobox.get()
+
+    # clear table
+    for row in tree.get_children():
+        tree.delete(row)
+    
+    list_for_product = []
+
+    if choose == "Усі":
+        for item in all_products:
+            list_for_product.append(item)
+
+    if choose == "CPU":
+        for item in all_products:
+            if item[4] == "Процесор":
+                list_for_product.append(item)
+
+    if choose == "GPU":
+        for item in all_products:
+            if item[4] == "Відеокарта":
+                list_for_product.append(item)
+    if choose == "Motherboard":
+        for item in all_products:
+            if item[4] == "Материнська плата":
+                list_for_product.append(item)
+
+    for row in tree.get_children():
+        tree.delete(row)
+
+    for row in tuple(list_for_product):
+        tree.insert("", "end", values=row)
 
 
 
@@ -13,7 +67,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     app.title("Головне меню")
     app.configure(fg_color="#FFFFFF")
 
-    
+    app.after(50, lambda: app.state("zoomed"))
     #Frame left widget
     frame_left_widget = ctk.CTkFrame(master=app,
         width=220,
@@ -52,7 +106,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     )
     label_category.grid(row=0,column=0,padx=0)
 
-    category = ["CPU","GPU","Motherboard"] #test data
+    category = ["Усі","CPU","GPU","Motherboard"] #test data
 
     #Combobox type category
     combobox_category = ctk.CTkComboBox(
@@ -69,7 +123,8 @@ def Main_window(*, app: ctk.CTk) -> None:
         dropdown_text_color="#000000",
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
-        values=category
+        values=category,
+        command=lambda value: filter_by_type(combobox_category,tree_table,all_products)
     )
     combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
 
@@ -90,27 +145,6 @@ def Main_window(*, app: ctk.CTk) -> None:
         font=("Lato", 24, "bold")
     )
     label_sort.grid(row=0,column=0,padx=0)
-
-
-    #Function who sort data in table
-    def sort_by_cost(event=None) -> None: 
-        choose = combobox_sort.get()
-        tree_list = [tree_table.item(row)["values"] for row in tree_table.get_children()] #the same as the one below, 2 options
-        # for row in tree_table.get_children():
-        #     tree_list.append(tree_table.item(row)["values"])
-        #     print(tree_table.item(row)["values"])
-        
-        print(tree_list)
-        if choose == "Від дешевих до дорогих":
-            tree_list.sort(key=lambda item: float(item[-1]))
-        if choose == "Від дорогих до дешевих":
-            tree_list.sort(key=lambda item: float(item[-1]),reverse=True)
-
-        for row in tree_table.get_children():
-            tree_table.delete(row)
-
-        for row in tuple(tree_list):
-            tree_table.insert("", "end", values=row)
              
 
     #Combobox for sort
@@ -129,7 +163,7 @@ def Main_window(*, app: ctk.CTk) -> None:
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
         values=["Від дешевих до дорогих", "Від дорогих до дешевих"],
-        command=sort_by_cost
+        command=lambda value: sort_by_cost(combobox_sort,tree_table)
     )
     combobox_sort.grid(row=1,column=0,padx=(90,0), pady=(19,0))
 
@@ -208,25 +242,26 @@ def Main_window(*, app: ctk.CTk) -> None:
     # Frame table for product
     frame_table = ctk.CTkFrame(master=app, fg_color="transparent", border_width=1)
     frame_table.pack(side="right", padx=(220,0),pady=(110,0),fill="both", expand=True)
+    # allow frame scaling
+    frame_table.grid_rowconfigure(0, weight=1) 
+    frame_table.grid_columnconfigure(0, weight=1) 
     
-    # Label for table
     columns = ("id", "name", "model","specs","category","vendor","supplier","available_quantity","cost")
-    scrollbar_y = ctk.CTkScrollbar(frame_table, orientation="vertical")
-    scrollbar_y.pack(side="right", fill="y")
-    
+    titles  = ["№","Назва","Модель","Характеристики","Тип категорії","Виробник","Постачальник","В наявності","Ціна товару"]
     # Table for product
-    tree_table = ttk.Treeview(master=frame_table,columns=columns, show="headings",xscrollcommand=scrollbar_y.set)
-    tree_table.heading("id", text="№")
-    tree_table.heading("name", text="Назва")
-    tree_table.heading("model", text="Модель"),
-    tree_table.heading("specs", text="Характеристики"),
-    tree_table.heading("category", text="Тип категорії"),
-    tree_table.heading("vendor", text="Виробник"),
-    tree_table.heading("supplier", text="Постачальник"),
-    tree_table.heading("available_quantity", text="В наявності"),
-    tree_table.heading("cost", text="Ціна товару")
-    tree_table.pack(expand=True,fill="both",padx=(5,5),pady=(5,5))
+    tree_table = ttk.Treeview(master=frame_table,columns=columns, show="headings")
+    # add a title to each column
+    for col, title in zip(columns, titles):
+        tree_table.heading(col, text=title)
+    
+    tree_table.grid(row=0, column=0, sticky="nsew", padx=(5,0), pady=(5,10))
+    
+    # Scrollbar for table by Y
+    scrollbar_y = ctk.CTkScrollbar(frame_table, orientation="vertical",command=tree_table.yview,height=1)
+    scrollbar_y.grid(row=0, column=1, sticky="ns", padx=(0,5), pady=(5,10))
 
+    # Configure scroll bar for table by Y
+    tree_table.configure(yscrollcommand=scrollbar_y.set)
 
     # Style for table
     style = ttk.Style()
@@ -249,42 +284,42 @@ def Main_window(*, app: ctk.CTk) -> None:
     cursor_tab = CONNECT.cursor()
     # Big Query
     query_tab = """
-    SELECT 
-        p.product_id,
-        p.product_name,
-        p.product_model,
-        GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
-        c.category_name,
-        v.vendor_name,
-        supp.supplier_name,
-        p.product_quantity,
-        p.product_price
-    FROM product p
-    JOIN product_specification ps ON p.product_id = ps.product_id
-    JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
-    JOIN category c ON c.category_id = cs.category_id
-    JOIN vendor v USING(vendor_id)
-    JOIN supplier_product sp ON sp.product_id=p.product_id
-    JOIN supply suppl ON suppl.supply_id=sp.supply_id
-    JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
-    GROUP BY
-        p.product_id,
-        p.product_name,
-        p.product_model,
-        c.category_name,
-        v.vendor_name,
-        supp.supplier_name,
-        p.product_quantity,
-        p.product_price; 
+        SELECT 
+            p.product_id,
+            p.product_name,
+            p.product_model,
+            GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
+            c.category_name,
+            v.vendor_name,
+            supp.supplier_name,
+            p.product_quantity,
+            p.product_price
+        FROM product p
+        JOIN product_specification ps ON p.product_id = ps.product_id
+        JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
+        JOIN category c ON c.category_id = cs.category_id
+        JOIN vendor v USING(vendor_id)
+        JOIN supplier_product sp ON sp.product_id=p.product_id
+        JOIN supply suppl ON suppl.supply_id=sp.supply_id
+        JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
+        GROUP BY
+            p.product_id,
+            p.product_name,
+            p.product_model,
+            c.category_name,
+            v.vendor_name,
+            supp.supplier_name,
+            p.product_quantity,
+            p.product_price; 
     """
     cursor_tab.execute(query_tab) # exucutes an SQL query
-    response_tab = cursor_tab.fetchall() # converts the response into a list of tuples
+    all_products = cursor_tab.fetchall() # converts the response into a list of tuples
     
     # Add data in table by row
-    for row in response_tab:
+    for row in all_products:
         tree_table.insert("", "end", values=row)
-
-
+    
+    
     
 if __name__ == "__main__":
     APP = ctk.CTk()

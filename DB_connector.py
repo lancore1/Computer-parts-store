@@ -12,3 +12,12 @@ CONNECT = mysql.connector.connect(
     password=DB_PASSWORD,
     database="Silicon_Store_DB"
 )
+
+#  for test
+# CONNECT = mysql.connector.connect(
+#     host="localhost",
+#     port=3306,
+#     user="root",
+#     password=DB_PASSWORD,
+#     database="Silicon_Store_DB"
+# )
