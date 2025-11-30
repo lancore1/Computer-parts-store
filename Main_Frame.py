@@ -365,52 +365,53 @@ def Main_window(*, app: ctk.CTk) -> None:
     tree_table.column("available_quantity", width=138)  
     tree_table.column("cost", width=150)  
 
-
-    # Query for data in table
-    cursor_tab = CONNECT.cursor()
-    # Big Query
-    query_tab = """
-        SELECT 
-            p.product_id,
-            p.product_name,
-            p.product_model,
-            GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
-            c.category_name,
-            v.vendor_name,
-            supp.supplier_name,
-            p.product_quantity,
-            p.product_price
-        FROM product p
-        JOIN product_specification ps ON p.product_id = ps.product_id
-        JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
-        JOIN category c ON c.category_id = cs.category_id
-        JOIN vendor v USING(vendor_id)
-        JOIN supplier_product sp ON sp.product_id=p.product_id
-        JOIN supply suppl ON suppl.supply_id=sp.supply_id
-        JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
-        GROUP BY
-            p.product_id,
-            p.product_name,
-            p.product_model,
-            c.category_name,
-            v.vendor_name,
-            supp.supplier_name,
-            p.product_quantity,
-            p.product_price; 
-    """
-    cursor_tab.execute(query_tab) # exucutes an SQL query
-    all_products = cursor_tab.fetchall() # converts the response into a list of tuples
-
-    # Add data in table by row
-    for row in all_products:
-        tree_table.insert("", "end", values=row)
-        # DEFAULT value for current_products
-        current_products.append(row)
+    try:
+        # Query for data in table
+        cursor_tab = CONNECT.cursor()
+        # Big Query
+        query_tab = """
+            SELECT 
+                p.product_id,
+                p.product_name,
+                p.product_model,
+                GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
+                c.category_name,
+                v.vendor_name,
+                supp.supplier_name,
+                p.product_quantity,
+                p.product_price
+            FROM product p
+            JOIN product_specification ps ON p.product_id = ps.product_id
+            JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
+            JOIN category c ON c.category_id = cs.category_id
+            JOIN vendor v USING(vendor_id)
+            JOIN supplier_product sp ON sp.product_id=p.product_id
+            JOIN supply suppl ON suppl.supply_id=sp.supply_id
+            JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
+            GROUP BY
+                p.product_id,
+                p.product_name,
+                p.product_model,
+                c.category_name,
+                v.vendor_name,
+                supp.supplier_name,
+                p.product_quantity,
+                p.product_price; 
+        """
+        cursor_tab.execute(query_tab) # exucutes an SQL query
+        all_products = cursor_tab.fetchall() # converts the response into a list of tuples
+        # Add data in table by row
+        for row in all_products:
+            tree_table.insert("", "end", values=row)
+            # DEFAULT value for current_products
+            current_products.append(row)
+    except:
+        print("We have a problem with get data about product in Main_Frame")
     
     
 
     
-if __name__ == "__main__":
-    APP = ctk.CTk()
-    Main_window(app = APP)
-    APP.mainloop()
+# if __name__ == "__main__":
+#     APP = ctk.CTk()
+#     Main_window(app = APP)
+#     APP.mainloop()
