@@ -1,0 +1,544 @@
+from PIL import Image
+import tkinter as tk
+from tkinter import ttk
+import customtkinter as ctk
+from DB_connector import CONNECT
+
+
+current_products = []  # stores current table data for filtering
+
+
+# Function who sort data in table by cost
+def sort_by_cost(combobox, tree) -> None: 
+    # get choose from combobox
+    choose = combobox.get()
+
+    # get all data from table as list
+    tree_list = [tree.item(row)["values"] for row in tree.get_children()]
+    # alternative way using for loop:
+    # for row in tree_table.get_children():
+    #     tree_list.append(tree_table.item(row)["values"])
+    #     print(tree_table.item(row)["values"])
+    # print(tree_list)
+
+    # sort data by cost
+    if choose == "Від дешевих до дорогих":
+        tree_list.sort(key=lambda item: float(item[-1]))
+    if choose == "Від дорогих до дешевих":
+        tree_list.sort(key=lambda item: float(item[-1]), reverse=True)
+
+    # remove all data in table, work faster than delete by row in for
+    tree.delete(*tree.get_children())
+
+    # populate table with sorted data
+    for row in tuple(tree_list):
+        tree.insert("", "end", values=row)
+
+
+# Function who filtered data in table by type category
+def filter_by_type(combobox, tree) -> None:
+    global current_products
+
+    # get choose
+    choose = combobox.get()
+
+    # remove all data in table, work faster than delete by row in for 
+    tree.delete(*tree.get_children())
+
+    # saved data who filtered 
+    filtered = []
+
+    # save the data source for the table as current data 
+    sourse = current_products
+
+    if choose == "Усі":
+        # we copy the current data, keeping in mind that current_products contains all the default data.
+        filtered = current_products.copy()
+
+    if choose == "CPU":
+        filtered = [item for item in sourse if item[4] == "Процесор"]
+
+    if choose == "GPU":
+        filtered = [item for item in sourse if item[4] == "Відеокарта"]
+
+    if choose == "Motherboard":
+        filtered = [item for item in sourse if item[4] == "Материнська плата"]
+
+    # populate table with filtered data
+    tree.delete(*tree.get_children())
+    for row in tuple(filtered):
+        tree.insert("", "end", values=row)
+
+
+# Function who filtere data by entered text from entry search
+def search_by_entry(entry_search, tree, all_products) -> None:
+    global current_products
+
+    text = entry_search.get().lower().strip()
+
+    # clear table 
+    tree.delete(*tree.get_children())
+
+    filtered_list = []
+
+    # if text is empty
+    if text == "":
+        current_products = all_products.copy()
+    else:
+        # if text not empty, we save copy in current_products from filtered_list
+        for item in all_products:
+            if text in item[1].lower():
+                filtered_list.append(item)
+        current_products = filtered_list.copy()
+
+    # populate table with current_products
+    tree.delete(*tree.get_children())
+    for row in tuple(current_products):
+        tree.insert("", "end", values=row)
+
+
+def Main_window(*, app: ctk.CTk) -> None:
+    global current_products
+
+    app.geometry("1920x1080")
+    app.title("Оформлення замовлення")
+    app.configure(fg_color="#FFFFFF")
+    # open app in full screen
+    app.after(50, lambda: app.state("zoomed"))
+
+    #Frame left widget
+    frame_left_widget = ctk.CTkFrame(master=app,
+        width=220,
+        height=965,
+        corner_radius=0,
+        fg_color="#00BFFF"
+    )
+    frame_left_widget.place(x=0, y=115,relheight=0.893)
+    frame_left_widget.propagate(False)
+
+    #Frame top widget
+    frame_top_widget = ctk.CTkFrame(master=app,
+        width=1920,
+        height=115,
+        corner_radius=0,
+        fg_color="#00BFFF"
+    )
+    frame_top_widget.place(x=0, y=0,relwidth=1)
+    frame_top_widget.propagate(False)
+
+    #Frame for type category
+    frame_type_category = ctk.CTkFrame(master=frame_top_widget,width=200,height=90,fg_color="transparent")
+    frame_type_category.place(x=8,y=16)
+    frame_type_category.propagate(False)
+
+    #Label category
+    label_category = ctk.CTkLabel(   
+        master=frame_type_category,  
+        text="Тип категорії", 
+        width=10, 
+        height=1, 
+        corner_radius=8, 
+        fg_color="transparent", 
+        text_color="#FFFFFF", 
+        font=("Lato", 24, "bold")
+    )
+    label_category.grid(row=0,column=0,padx=0)
+
+    #Combobox type category
+    combobox_category = ctk.CTkComboBox(
+        master=frame_type_category,
+        width=153,
+        height=25,  
+        corner_radius=5, 
+        text_color="#000000", 
+        font=("Lato", 16, "bold"),
+        fg_color="#FFFFFF",
+        button_color="#FFFFFF",
+        border_color="#FFFFFF",
+        dropdown_fg_color="#FFFFFF",
+        dropdown_text_color="#000000",
+        dropdown_font=("Lato", 14, "normal"),
+        dropdown_hover_color="#E5E5E5",
+        values=["Усі","CPU","GPU","Motherboard"],
+        command=lambda value: filter_by_type(combobox_category,tree_table)
+    )
+    combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
+
+     #Frame for variable sort
+    frame_var_sort = ctk.CTkFrame(master=frame_top_widget,width=200,height=90,fg_color="transparent")
+    frame_var_sort.place(x=190,y=16)
+    frame_var_sort.propagate(False)
+
+    #Label category
+    label_sort = ctk.CTkLabel(   
+        master=frame_var_sort,  
+        text="Сортування", 
+        width=10, 
+        height=1, 
+        corner_radius=8, 
+        fg_color="transparent", 
+        text_color="#FFFFFF", 
+        font=("Lato", 24, "bold")
+    )
+    label_sort.grid(row=0,column=0,padx=0)
+             
+
+    #Combobox for sort
+    combobox_sort = ctk.CTkComboBox(
+        master=frame_var_sort,
+        width=231,
+        height=25,  
+        corner_radius=5, 
+        text_color="#000000", 
+        font=("Lato", 16, "bold"),
+        fg_color="#FFFFFF",
+        button_color="#FFFFFF",
+        border_color="#FFFFFF",
+        dropdown_fg_color="#FFFFFF",
+        dropdown_text_color="#000000",
+        dropdown_font=("Lato", 14, "normal"),
+        dropdown_hover_color="#E5E5E5",
+        values=["Від дешевих до дорогих", "Від дорогих до дешевих"],
+        command=lambda value: sort_by_cost(combobox_sort,tree_table)
+    )
+    combobox_sort.grid(row=1,column=0,padx=(90,0), pady=(19,0))
+
+    # Frame for search 
+    frame_search = ctk.CTkFrame(
+        master=frame_top_widget,
+        width=480,
+        height=65,
+        fg_color="transparent",
+        bg_color="#D9D9D9"
+    )
+    frame_search.pack(anchor="center", pady=25, padx=(150, 0))
+    frame_search.pack_propagate(False)
+
+    # Entry for search
+    entry_search = ctk.CTkEntry(
+        master=frame_search,
+        height=60,
+        width=470,
+        placeholder_text="Пошук за назвою",
+        placeholder_text_color="#FFFFFF",
+        text_color="#000000",
+        font=("Lato", 20, "bold"),
+        fg_color="#D9D9D9", 
+        bg_color="transparent",
+        border_width=0,
+        corner_radius=27
+    )
+    entry_search.grid(row=0,column=0)
+
+
+    # Button for search
+    button_search = ctk.CTkButton(
+        master=frame_search,
+        width=40,
+        height=40,
+        image=ctk.CTkImage(
+            light_image=Image.open("images/search.png"),
+            size=(30, 30)
+        ),
+        text="",
+        fg_color="#D9D9D9",
+        bg_color="#D9D9D9",
+        hover_color="#BFBFBF",
+        corner_radius=20,
+        command=lambda: search_by_entry(entry_search,tree_table,all_products)
+
+    )
+    button_search.place(relx=0.90, rely=0.5, anchor="center")
+    # add hotkey for button search on press "ENTER"
+    app.bind("<Return>", lambda event: button_search.invoke())
+
+
+    # Frame for button sale and supply
+    retrun_button_frame = ctk.CTkFrame(master=frame_top_widget, width=200, height=65,fg_color="transparent")
+    retrun_button_frame.place(relx=0.725, rely=0.5, anchor="w") 
+
+    # Button for sale
+    return_button = ctk.CTkButton(
+        master=retrun_button_frame,
+        text="abcdefghijklmnopqrstuvwxyz",
+        width=115,
+        height=39,
+        corner_radius=5,
+        fg_color="#34D399",
+        hover_color="#2ECC71",
+        font=("Lato", 14, "bold"),
+        compound="right" 
+    )
+    return_button.pack(side="left")
+
+
+    # Frame for user info
+    frame_user = ctk.CTkFrame(master=frame_top_widget,width=200,height=65,fg_color="transparent")
+    frame_user.place(x=1380,y=30)
+    frame_user.propagate(False)
+
+    # User name
+    user_label = ctk.CTkLabel(   
+        master=frame_user,  
+        text="Прізвище", 
+        width=10, 
+        height=1    , 
+        fg_color="transparent", 
+        text_color="#FFFFFF", 
+        font=("Lato", 20, "bold")
+    )
+    user_label.grid(row=0,column=0,padx=0)
+
+    # User image
+    user_image = ctk.CTkImage(
+        light_image=Image.open("images/image_title_reverse.png"),
+        dark_image=Image.open("images/image_title_reverse.png"),
+        size=(50,50)
+    )
+    label_user_image = ctk.CTkLabel(master=frame_user, image=user_image, text="")
+    label_user_image.grid(row=0, column=1, padx=10)
+
+
+    # =================================================================================
+    #                           ГОЛОВНИЙ ФРЕЙМ (RIGHT CONTAINER)
+    # =================================================================================
+    # Цей фрейм містить ВСІ таблиці та поля вводу праворуч від меню
+    frame_right_container = ctk.CTkFrame(master=app, fg_color="transparent")
+    frame_right_container.pack(side="right", fill="both", expand=True, padx=(220, 0), pady=(115, 0))
+
+
+    # ------------------ 1. ТАБЛИЦЯ ТОВАРІВ (Верхня частина) ------------------
+    frame_table = ctk.CTkFrame(master=frame_right_container, fg_color="transparent", border_width=1)
+    # expand=True дозволяє цій таблиці займати все вільне місце по вертикалі, яке залишиться
+    frame_table.pack(side="top", fill="both", expand=True, padx=5, pady=(5, 5))
+    
+    frame_table.grid_columnconfigure(0, weight=1) 
+    frame_table.grid_rowconfigure(0, weight=1)
+    
+    columns = ("id", "name", "model","specs","category","vendor","supplier","available_quantity","cost")
+    titles  = ["№","Назва","Модель","Характеристики","Тип категорії","Виробник","Постачальник","В наявності","Ціна товару"]
+    
+    tree_table = ttk.Treeview(master=frame_table,columns=columns, show="headings")
+    for col, title in zip(columns, titles):
+        tree_table.heading(col, text=title)
+    
+    tree_table.grid(row=0, column=0, sticky="nsew", padx=(5,0), pady=(5,5))
+    
+    # Scrollbar
+    scrollbar_y = ctk.CTkScrollbar(frame_table, orientation="vertical",command=tree_table.yview,height=1)
+    scrollbar_y.grid(row=0, column=1, sticky="ns", padx=(0,5), pady=(5,5))
+    tree_table.configure(yscrollcommand=scrollbar_y.set)
+
+    # Style
+    style = ttk.Style()
+    style.theme_use("clam")  
+    style.configure("Treeview", font=("Lato", 13,"normal"), rowheight=30)       
+    style.configure("Treeview.Heading",  font=("Lato", 16,"bold"))  
+
+    # Widths
+    tree_table.column("id", width=40, anchor="center")  
+    tree_table.column("name", width=230)  
+    tree_table.column("model", width=120)  
+    tree_table.column("specs", width=450)  
+    tree_table.column("vendor", width=120)  
+    tree_table.column("category", width=150)  
+    tree_table.column("supplier", width=120)
+    tree_table.column("available_quantity", width=100, anchor="center")  
+    tree_table.column("cost", width=120, anchor="e")  
+
+
+    # ------------------ 2. ПАНЕЛЬ ДОДАВАННЯ (Між таблицями) ------------------
+    frame_controls_add = ctk.CTkFrame(master=frame_right_container, height=68, fg_color="transparent")
+    frame_controls_add.pack(side="top", fill="x", padx=5, pady=(0, 5))
+
+    # Entry: ID
+    entry_id = ctk.CTkEntry(
+        master=frame_controls_add, 
+        placeholder_text="Код товару", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width= 2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000"
+    )
+    entry_id.pack(side="left", padx=(5, 10))
+
+    # Entry: Quantity
+    entry_quantity = ctk.CTkEntry(
+        master=frame_controls_add, 
+        placeholder_text="Кількість", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width= 2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_quantity.pack(side="left", padx=(0, 10))
+
+    # Button: Add to Cart
+    button_add = ctk.CTkButton(
+        master=frame_controls_add,
+        text="Додати",
+        width=230,
+        height=68,
+        corner_radius=10,
+        fg_color="#00BFFF",
+        hover_color="#009BCF",
+        font=("Lato", 24, "bold"),
+        text_color="#FFFFFF"
+    )
+    button_add.pack(side="left")
+
+
+    # ------------------ 3. ТАБЛИЦЯ КОШИКА (Нижня таблиця) ------------------
+    # height=250 фіксує висоту блоку кошика
+    frame_cart = ctk.CTkFrame(master=frame_right_container, fg_color="transparent", border_width=1, height=200)
+    frame_cart.pack(side="top", fill="x", expand=False, padx=5, pady=(0, 5))
+    
+    frame_cart.grid_columnconfigure(0, weight=1)
+    frame_cart.grid_rowconfigure(0, weight=1)
+
+    # Columns for the cart
+    cart_columns = ("id", "name", "model", "quantity", "price", "total")
+    cart_titles = ["№", "Назва", "Модель", "Кількість", "Ціна", "Сума"]
+
+    tree_cart = ttk.Treeview(master=frame_cart, columns=cart_columns, show="headings", height=6)
+    
+    for col, title in zip(cart_columns, cart_titles):
+        tree_cart.heading(col, text=title)
+
+    tree_cart.grid(row=0, column=0, sticky="nsew", padx=(5, 0), pady=(5, 5))
+
+    # Scrollbar for cart
+    scrollbar_cart_y = ctk.CTkScrollbar(frame_cart, orientation="vertical", command=tree_cart.yview)
+    scrollbar_cart_y.grid(row=0, column=1, sticky="ns", padx=(0, 5), pady=(5, 5))
+    
+    tree_cart.configure(yscrollcommand=scrollbar_cart_y.set)
+
+    # Width for cart table
+    tree_cart.column("id", width=50, anchor="center")
+    tree_cart.column("name", width=400)
+    tree_cart.column("model", width=200)
+    tree_cart.column("quantity", width=100, anchor="center")
+    tree_cart.column("price", width=150, anchor="e")
+    tree_cart.column("total", width=150, anchor="e")
+
+
+    # ------------------ 4. ПАНЕЛЬ ОФОРМЛЕННЯ (Під кошиком) ------------------
+    frame_controls_checkout = ctk.CTkFrame(master=frame_right_container, height=68, fg_color="transparent")
+    frame_controls_checkout.pack(side="top", fill="x", padx=5, pady=(0, 20))
+
+    # Entry 1: Client Name
+    entry_client_name = ctk.CTkEntry(
+        master=frame_controls_checkout, 
+        placeholder_text="ПІБ Клієнта", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width= 2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_name.pack(side="left", padx=(5, 10))
+
+    # Entry 2: Phone
+    entry_client_phone = ctk.CTkEntry(
+        master=frame_controls_checkout, 
+        placeholder_text="Номер телефону", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width= 2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_phone.pack(side="left", padx=(0, 10))
+
+    # Entry 3: Additional (Address/Email)
+    entry_client_info = ctk.CTkEntry(
+        master=frame_controls_checkout, 
+        placeholder_text="Email", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width= 2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_info.pack(side="left", padx=(0, 10))
+
+    # Button: Confirm Checkout
+    button_checkout = ctk.CTkButton(
+        master=frame_controls_checkout,
+        text="Оформити",
+        width=230, 
+        height=68,
+        corner_radius=10,
+        fg_color="#34D399",
+        hover_color="#2ECC71",
+        font=("Lato", 24, "bold"),
+        text_color="#FFFFFF",
+    )
+    button_checkout.pack(side="left")
+
+
+    # ------------------ ЗАПОВНЕННЯ ГОЛОВНОЇ ТАБЛИЦІ ------------------
+    cursor_tab = CONNECT.cursor()
+    query_tab = """
+        SELECT 
+            p.product_id,
+            p.product_name,
+            p.product_model,
+            GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
+            c.category_name,
+            v.vendor_name,
+            supp.supplier_name,
+            p.product_quantity,
+            p.product_price
+        FROM product p
+        JOIN product_specification ps ON p.product_id = ps.product_id
+        JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
+        JOIN category c ON c.category_id = cs.category_id
+        JOIN vendor v USING(vendor_id)
+        JOIN supplier_product sp ON sp.product_id=p.product_id
+        JOIN supply suppl ON suppl.supply_id=sp.supply_id
+        JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
+        GROUP BY
+            p.product_id,
+            p.product_name,
+            p.product_model,
+            c.category_name,
+            v.vendor_name,
+            supp.supplier_name,
+            p.product_quantity,
+            p.product_price; 
+    """
+    cursor_tab.execute(query_tab)
+    all_products = cursor_tab.fetchall()
+
+    for row in all_products:
+        tree_table.insert("", "end", values=row)
+        current_products.append(row)
+
+    
+if __name__ == "__main__":
+    APP = ctk.CTk()
+    Main_window(app = APP)
+    APP.mainloop()
