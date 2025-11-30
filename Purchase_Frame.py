@@ -97,7 +97,7 @@ def search_by_entry(entry_search, tree, all_products) -> None:
         tree.insert("", "end", values=row)
 
 
-def Main_window(*, app: ctk.CTk) -> None:
+def Purchase_window(*, app: ctk.CTk) -> None:
     global current_products
 
     app.geometry("1920x1080")
@@ -260,7 +260,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     # Button for sale
     return_button = ctk.CTkButton(
         master=retrun_button_frame,
-        text="abcdefghijklmnopqrstuvwxyz",
+        text="До головного меню",
         width=115,
         height=39,
         corner_radius=5,
@@ -335,16 +335,15 @@ def Main_window(*, app: ctk.CTk) -> None:
     style.configure("Treeview", font=("Lato", 13,"normal"), rowheight=30)       
     style.configure("Treeview.Heading",  font=("Lato", 16,"bold"))  
 
-    # Widths
-    tree_table.column("id", width=40, anchor="center")  
+    # Wigth
+    tree_table.column("id", width=40)  
     tree_table.column("name", width=230)  
     tree_table.column("model", width=120)  
     tree_table.column("specs", width=450)  
     tree_table.column("vendor", width=120)  
-    tree_table.column("category", width=150)  
-    tree_table.column("supplier", width=120)
-    tree_table.column("available_quantity", width=100, anchor="center")  
-    tree_table.column("cost", width=120, anchor="e")  
+    tree_table.column("category", width=175)  
+    tree_table.column("available_quantity", width=138)  
+    tree_table.column("cost", width=150) 
 
 
     # ------------------ 2. ПАНЕЛЬ ДОДАВАННЯ (Між таблицями) ------------------
@@ -389,7 +388,7 @@ def Main_window(*, app: ctk.CTk) -> None:
         text="Додати",
         width=230,
         height=68,
-        corner_radius=10,
+        corner_radius=5,
         fg_color="#00BFFF",
         hover_color="#009BCF",
         font=("Lato", 24, "bold"),
@@ -487,58 +486,62 @@ def Main_window(*, app: ctk.CTk) -> None:
     # Button: Confirm Checkout
     button_checkout = ctk.CTkButton(
         master=frame_controls_checkout,
-        text="Оформити",
+        text="Завершити замовлення",
         width=230, 
         height=68,
-        corner_radius=10,
+        corner_radius=5,
         fg_color="#34D399",
         hover_color="#2ECC71",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
     )
-    button_checkout.pack(side="left")
+    button_checkout.pack(side="left",padx=50)
 
-
-    # ------------------ ЗАПОВНЕННЯ ГОЛОВНОЇ ТАБЛИЦІ ------------------
-    cursor_tab = CONNECT.cursor()
-    query_tab = """
-        SELECT 
-            p.product_id,
-            p.product_name,
-            p.product_model,
-            GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
-            c.category_name,
-            v.vendor_name,
-            supp.supplier_name,
-            p.product_quantity,
-            p.product_price
-        FROM product p
-        JOIN product_specification ps ON p.product_id = ps.product_id
-        JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
-        JOIN category c ON c.category_id = cs.category_id
-        JOIN vendor v USING(vendor_id)
-        JOIN supplier_product sp ON sp.product_id=p.product_id
-        JOIN supply suppl ON suppl.supply_id=sp.supply_id
-        JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
-        GROUP BY
-            p.product_id,
-            p.product_name,
-            p.product_model,
-            c.category_name,
-            v.vendor_name,
-            supp.supplier_name,
-            p.product_quantity,
-            p.product_price; 
-    """
-    cursor_tab.execute(query_tab)
-    all_products = cursor_tab.fetchall()
-
-    for row in all_products:
-        tree_table.insert("", "end", values=row)
-        current_products.append(row)
+    try:
+        # Query for data in table
+        cursor_tab = CONNECT.cursor()
+        # Big Query
+        query_tab = """
+            SELECT 
+                p.product_id,
+                p.product_name,
+                p.product_model,
+                GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
+                c.category_name,
+                v.vendor_name,
+                supp.supplier_name,
+                p.product_quantity,
+                p.product_price
+            FROM product p
+            JOIN product_specification ps ON p.product_id = ps.product_id
+            JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
+            JOIN category c ON c.category_id = cs.category_id
+            JOIN vendor v USING(vendor_id)
+            JOIN supplier_product sp ON sp.product_id=p.product_id
+            JOIN supply suppl ON suppl.supply_id=sp.supply_id
+            JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
+            GROUP BY
+                p.product_id,
+                p.product_name,
+                p.product_model,
+                c.category_name,
+                v.vendor_name,
+                supp.supplier_name,
+                p.product_quantity,
+                p.product_price; 
+        """
+        cursor_tab.execute(query_tab) # exucutes an SQL query
+        all_products = cursor_tab.fetchall() # converts the response into a list of tuples
+        # Add data in table by row
+        for row in all_products:
+            tree_table.insert("", "end", values=row)
+            # DEFAULT value for current_products
+            current_products.append(row)
+    except:
+        print("We have a problem with get data about product in Main_Frame")
 
     
 if __name__ == "__main__":
     APP = ctk.CTk()
-    Main_window(app = APP)
+    Purchase_window(app = APP)
     APP.mainloop()
