@@ -38,7 +38,6 @@ def sort_by_cost(combobox, tree) -> None:
 # Function who filtered data in table by type category
 def filter_by_type(combobox, tree) -> None:
     global current_products
-
     # get choose
     choose = combobox.get()
 
@@ -95,6 +94,68 @@ def search_by_entry(entry_search, tree, all_products) -> None:
     tree.delete(*tree.get_children())
     for row in tuple(current_products):
         tree.insert("", "end", values=row)
+
+
+#Function who add data from current_products to cart
+def add_data_to_card(product_id: str, quantity: str, table: ttk.Treeview) -> None:
+    global current_products
+
+    try:
+        # converts product_id,quantity because ctk.CTkEntry.get() return "str" not number
+        product_id = int(product_id)
+        quantity = int(quantity)
+
+        product_data = None
+        for item in current_products:
+            if int(item[0]) == product_id:
+                product_data = item
+                break
+
+        if product_data is None:
+            print("Товар з таким ID не знайдено в current_products")
+            return
+
+        max_quantity = int(product_data[7])  # available quantity in stock for a specific product_id
+
+
+        # checking the product for duplicates
+        for iid in table.get_children(): # iid have a unique id of row in table 
+            row = table.item(iid)["values"]
+
+            if int(row[0]) == product_id:  # if product exists
+                price = float(row[4])
+
+                new_quantity = int(row[3]) + quantity
+
+                # if new count biggest than max, we don't do anymore
+                if new_quantity > max_quantity:
+                    print("Немає такої кількості товару у наявності!")
+                    return
+
+                new_sum = price * new_quantity
+                new_row = [row[0], row[1], row[2], new_quantity, price, new_sum]
+
+                table.delete(iid)
+                table.insert("", "end", values=new_row)
+                return
+
+        #  if the product is not available we search for it in current_products
+        for item in current_products:
+            if int(item[0]) == product_id:
+                if int(item[7]) < quantity:
+                    print("Немає такої кількості товару у наявності!")
+                    return
+
+                price = float(item[-1])
+                new_row = [item[0],item[1],item[2],quantity,price,price * quantity]
+
+                table.insert("", "end", values=new_row)
+                return
+
+        print("Товар з таким ID не знайдено")
+
+    except ValueError:
+        print("Помилка: неправильні дані")
 
 
 def Purchase_window(*, app: ctk.CTk) -> None:
@@ -392,7 +453,8 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         fg_color="#00BFFF",
         hover_color="#009BCF",
         font=("Lato", 24, "bold"),
-        text_color="#FFFFFF"
+        text_color="#FFFFFF",
+        command=lambda:add_data_to_card(entry_id.get(),entry_quantity.get(),tree_cart)
     )
     button_add.pack(side="left")
 
@@ -408,7 +470,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
     # Columns for the cart
     cart_columns = ("id", "name", "model", "quantity", "price", "total")
     cart_titles = ["№", "Назва", "Модель", "Кількість", "Ціна", "Сума"]
-
+    # Table for cart 
     tree_cart = ttk.Treeview(master=frame_cart, columns=cart_columns, show="headings", height=6)
     
     for col, title in zip(cart_columns, cart_titles):
@@ -540,7 +602,9 @@ def Purchase_window(*, app: ctk.CTk) -> None:
     except:
         print("We have a problem with get data about product in Main_Frame")
 
-    
+
+
+
 if __name__ == "__main__":
     APP = ctk.CTk()
     Purchase_window(app = APP)

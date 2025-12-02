@@ -13,7 +13,7 @@ CONNECT = mysql.connector.connect(
     database="Silicon_Store_DB"
 )
 
-#  for test
+#  for ltest
 # CONNECT = mysql.connector.connect(
 #     host="localhost",
 #     port=3306,

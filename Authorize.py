@@ -21,6 +21,7 @@ def validate_login_and_password(APP,login:str,password:str) -> None:
         result = response[0][0] # first row and column we get a NUMBER 0 or 1
 
         if result:
+            # 
             for widget in APP.winfo_children():
                 widget.destroy()
             Main_window(app=APP)
