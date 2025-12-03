@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
-
+import global_state 
 
 current_products = []  # stores current table data for filtering
 
@@ -306,12 +306,12 @@ def Main_window(*, app: ctk.CTk) -> None:
     # User name
     user_label = ctk.CTkLabel(   
         master=frame_user,  
-        text="Прізвище", 
+        text=global_state.curr_user_last_name, 
         width=10, 
         height=1    , 
         fg_color="transparent", 
         text_color="#FFFFFF", 
-        font=("Lato", 20, "bold")
+        font=("Lato", 18, "bold")
     )
     user_label.grid(row=0,column=0,padx=0)
 

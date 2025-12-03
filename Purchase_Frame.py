@@ -466,7 +466,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
     )
     button_add.pack(side="left")
 
-    # Button who clear busket
+    # Button who clear basket
     button_clear_basket = ctk.CTkButton(
         master=frame_controls_add,
         text="Очистити кошик",

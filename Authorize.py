@@ -3,10 +3,10 @@ import customtkinter as ctk
 from DB_connector import CONNECT
 from error_login import error_window
 from Main_Frame import *
+import global_state
 
 def validate_login_and_password(APP,login:str,password:str) -> None:
-    print(login,password)
-    
+
     try:
         # Create a cursor to execute SQL queries
         cursor_auth = CONNECT.cursor()
@@ -18,12 +18,14 @@ def validate_login_and_password(APP,login:str,password:str) -> None:
         # converts the response into a list of tuples, for example this one [(0,)] - the structure of the fetchall() who was been return
         response = cursor_auth.fetchall() 
 
-        result = response[0][0] # first row and column we get a NUMBER 0 or 1
+        result = response[0][0] # first row and column we get a str who have a last_name of employee
 
-        if result:
-            # 
+        if len(result) > 0:
+            global_state.curr_user_last_name  = result
+            global_state.current_employee_login = login
             for widget in APP.winfo_children():
                 widget.destroy()
+
             Main_window(app=APP)
         else:
             error_window(APP)
@@ -143,5 +145,4 @@ def Authorize_window(app) -> None:
         command=lambda: validate_login_and_password(app,entry_login.get(),entry_password.get())
     )
     button_log_in.pack()
-
 
