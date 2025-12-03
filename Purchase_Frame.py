@@ -158,6 +158,14 @@ def add_data_to_card(product_id: str, quantity: str, table: ttk.Treeview) -> Non
         print("Помилка: неправильні дані")
 
 
+def clear_basket(table:ttk.Treeview) -> None:
+    # clear table 
+    table.delete(*table.get_children())
+    
+    
+
+
+
 def Purchase_window(*, app: ctk.CTk) -> None:
     global current_products
 
@@ -457,6 +465,21 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         command=lambda:add_data_to_card(entry_id.get(),entry_quantity.get(),tree_cart)
     )
     button_add.pack(side="left")
+
+    # Button who clear busket
+    button_clear_basket = ctk.CTkButton(
+        master=frame_controls_add,
+        text="Очистити кошик",
+        width=193,
+        height=39,
+        corner_radius=5,
+        fg_color="#FF3C00",
+        hover_color="#E32600",
+        font=("Lato", 16, "bold"),
+        text_color="#FFFFFF",
+        command=lambda:clear_basket(tree_cart)
+    )
+    button_clear_basket.pack(side="right")
 
 
     # ------------------ 3. ТАБЛИЦЯ КОШИКА (Нижня таблиця) ------------------
