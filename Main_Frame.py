@@ -3,7 +3,10 @@ import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
+from Main_Frame import *
+from Purchase_Frame import Purchase_window
 import global_state 
+import globalQuery
 
 current_products = []  # stores current table data for filtering
 
@@ -96,7 +99,15 @@ def search_by_entry(entry_search, tree, all_products) -> None:
     for row in tuple(current_products):
         tree.insert("", "end", values=row)
 
-
+# Function who open purchase frame
+def open_purchase(APP) -> None:
+    try:
+        for widget in APP.winfo_children():
+            widget.destroy()
+        Purchase_window(app=APP)
+    except:
+        print("We have a problem with rework window")
+    
 
     
 def Main_window(*, app: ctk.CTk) -> None:
@@ -274,7 +285,8 @@ def Main_window(*, app: ctk.CTk) -> None:
             dark_image=Image.open("images/sale.png"), 
             size=(20, 20)
         ),
-        compound="right" 
+        compound="right",
+        command=lambda:open_purchase(APP=app)
     )
     button_sale.pack(side="left", padx=(0,10))
 
@@ -368,37 +380,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     try:
         # Query for data in table
         cursor_tab = CONNECT.cursor()
-        # Big Query
-        query_tab = """
-            SELECT 
-                p.product_id,
-                p.product_name,
-                p.product_model,
-                GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
-                c.category_name,
-                v.vendor_name,
-                supp.supplier_name,
-                p.product_quantity,
-                p.product_price
-            FROM product p
-            JOIN product_specification ps ON p.product_id = ps.product_id
-            JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
-            JOIN category c ON c.category_id = cs.category_id
-            JOIN vendor v USING(vendor_id)
-            JOIN supplier_product sp ON sp.product_id=p.product_id
-            JOIN supply suppl ON suppl.supply_id=sp.supply_id
-            JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
-            GROUP BY
-                p.product_id,
-                p.product_name,
-                p.product_model,
-                c.category_name,
-                v.vendor_name,
-                supp.supplier_name,
-                p.product_quantity,
-                p.product_price; 
-        """
-        cursor_tab.execute(query_tab) # exucutes an SQL query
+        cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
         all_products = cursor_tab.fetchall() # converts the response into a list of tuples
         # Add data in table by row
         for row in all_products:
@@ -408,8 +390,6 @@ def Main_window(*, app: ctk.CTk) -> None:
     except:
         print("We have a problem with get data about product in Main_Frame")
     
-    
-
     
 # if __name__ == "__main__":
 #     APP = ctk.CTk()

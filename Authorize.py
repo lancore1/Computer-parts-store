@@ -5,6 +5,8 @@ from error_login import error_window
 from Main_Frame import *
 import global_state
 
+
+#Function who validate entered login and password 
 def validate_login_and_password(APP,login:str,password:str) -> None:
 
     try:

@@ -3,6 +3,9 @@ import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
+import Main_Frame
+import global_state # for get login 
+import globalQuery # have a big Query
 
 
 current_products = []  # stores current table data for filtering
@@ -70,8 +73,12 @@ def filter_by_type(combobox, tree) -> None:
 
 
 # Function who filtere data by entered text from entry search
-def search_by_entry(entry_search, tree, all_products) -> None:
+def search_by_entry(entry_search, tree) -> None:
     global current_products
+
+    cursor_tab = CONNECT.cursor()
+    cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
+    all_products = cursor_tab.fetchall() #list of tuples
 
     text = entry_search.get().lower().strip()
 
@@ -97,8 +104,10 @@ def search_by_entry(entry_search, tree, all_products) -> None:
 
 
 #Function who add data from current_products to cart
-def add_data_to_card(product_id: str, quantity: str, table: ttk.Treeview) -> None:
+def add_data_to_card(entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, table: ttk.Treeview) -> None:
     global current_products
+    product_id = entry_id.get()
+    quantity = entry_quantity.get()
 
     try:
         # converts product_id,quantity because ctk.CTkEntry.get() return "str" not number
@@ -121,6 +130,7 @@ def add_data_to_card(product_id: str, quantity: str, table: ttk.Treeview) -> Non
         # checking the product for duplicates
         for iid in table.get_children(): # iid have a unique id of row in table 
             row = table.item(iid)["values"]
+            print(row)
 
             if int(row[0]) == product_id:  # if product exists
                 price = float(row[4])
@@ -156,13 +166,100 @@ def add_data_to_card(product_id: str, quantity: str, table: ttk.Treeview) -> Non
 
     except ValueError:
         print("Помилка: неправильні дані")
+    finally:
+        entry_id.delete(0, "end")
+        entry_quantity.delete(0, "end")
 
 
+# Function who clear basket
 def clear_basket(table:ttk.Treeview) -> None:
     # clear table 
     table.delete(*table.get_children())
+
+
+# Function who make sale about 
+def make_sale(cl_name:ctk.CTkEntry,cl_email:ctk.CTkEntry,cl_phone:ctk.CTkEntry,table:ttk.Treeview,tree_table:ttk.Treeview) -> None:
+    global current_products
+    name = cl_name.get()
+    email = cl_email.get()
+    phone = cl_phone.get()
+    # login = global_state.current_employee_login
+    basket = [table.item(row)["values"] for row in table.get_children()]
+    cursor_tab = CONNECT.cursor()
+    print(cl_name)
+    print(cl_email)
+    print(cl_phone)
+    print(basket)
+
+    try:
+
+        if len(basket) == 1:
+            row = basket[0]
+            print(row)
+            curr_prod_id = int(row[0])
+            curr_prod_count = int(row[3])
+            curr_prod_price = float(row[4])
+            query_tab = f'''
+                call make_sale('{global_state.current_employee_login}',
+                '{name}',
+                '{email}',
+                '{phone}',
+                '{curr_prod_id}',
+                '{curr_prod_price}',
+                '{curr_prod_count}'
+                )
+            '''
+            cursor_tab.execute(query_tab) # exucutes an SQL query
+        else:
+            for row in basket:
+                print(row)
+                curr_prod_id = int(row[0])
+                curr_prod_count = int(row[3])
+                curr_prod_price = float(row[4])
+                query_tab = f'''
+                    call make_sale('{global_state.current_employee_login}',
+                    '{name}',
+                    '{email}',
+                    '{phone}',
+                    '{curr_prod_id}',
+                    '{curr_prod_price}',
+                    '{curr_prod_count}'
+                    )
+                '''
+
+                cursor_tab.execute(query_tab) # exucutes an SQL query
+    except:
+        print("Make_sale has a error with query or input data")
+
+    table.delete(*table.get_children())
+
+    for e in (cl_name, cl_email, cl_phone):
+        e.delete(0, "end")
     
+    tree_table.delete(*tree_table.get_children())
+
+    try:
+        # Query for data in table
+        cursor_tab = CONNECT.cursor()
+        cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
+        all_products = cursor_tab.fetchall() # converts the response into a list of tuples
+        # Add data in table by row
+        current_products.clear()
+        for row in all_products:
+            tree_table.insert("", "end", values=row)
+            # DEFAULT value for current_products
+            current_products.append(row)
+    except:
+        print("We have a problem with get data about product in Purchase Frame")
     
+# Function who get back to Main_frame
+def get_back(APP) -> None:
+    try:
+        for widget in APP.winfo_children():
+            widget.destroy()
+        Main_Frame.Main_window(app=APP)
+    except:
+        print("We have a problem with get back to Main_window")
 
 
 
@@ -314,7 +411,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         bg_color="#D9D9D9",
         hover_color="#BFBFBF",
         corner_radius=20,
-        command=lambda: search_by_entry(entry_search,tree_table,all_products)
+        command=lambda: search_by_entry(entry_search,tree_table)
 
     )
     button_search.place(relx=0.90, rely=0.5, anchor="center")
@@ -336,7 +433,8 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         fg_color="#34D399",
         hover_color="#2ECC71",
         font=("Lato", 14, "bold"),
-        compound="right" 
+        compound="right",
+        command=lambda:get_back(APP=app) 
     )
     return_button.pack(side="left")
 
@@ -349,12 +447,12 @@ def Purchase_window(*, app: ctk.CTk) -> None:
     # User name
     user_label = ctk.CTkLabel(   
         master=frame_user,  
-        text="Прізвище", 
+        text=global_state.curr_user_last_name, 
         width=10, 
         height=1    , 
         fg_color="transparent", 
         text_color="#FFFFFF", 
-        font=("Lato", 20, "bold")
+        font=("Lato", 18, "bold")
     )
     user_label.grid(row=0,column=0,padx=0)
 
@@ -462,7 +560,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         hover_color="#009BCF",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
-        command=lambda:add_data_to_card(entry_id.get(),entry_quantity.get(),tree_cart)
+        command=lambda:add_data_to_card(entry_id,entry_quantity,tree_cart)
     )
     button_add.pack(side="left")
 
@@ -579,43 +677,14 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         hover_color="#2ECC71",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
+        command=lambda:make_sale(entry_client_name,entry_client_info,entry_client_phone,tree_cart,tree_table)
     )
     button_checkout.pack(side="left",padx=50)
 
     try:
         # Query for data in table
         cursor_tab = CONNECT.cursor()
-        # Big Query
-        query_tab = """
-            SELECT 
-                p.product_id,
-                p.product_name,
-                p.product_model,
-                GROUP_CONCAT(DISTINCT ps.productSpec_value SEPARATOR '/'),
-                c.category_name,
-                v.vendor_name,
-                supp.supplier_name,
-                p.product_quantity,
-                p.product_price
-            FROM product p
-            JOIN product_specification ps ON p.product_id = ps.product_id
-            JOIN category_specification cs ON cs.categorySpec_id = ps.categorySpec_id
-            JOIN category c ON c.category_id = cs.category_id
-            JOIN vendor v USING(vendor_id)
-            JOIN supplier_product sp ON sp.product_id=p.product_id
-            JOIN supply suppl ON suppl.supply_id=sp.supply_id
-            JOIN supplier supp ON suppl.supplier_id=supp.supplier_id
-            GROUP BY
-                p.product_id,
-                p.product_name,
-                p.product_model,
-                c.category_name,
-                v.vendor_name,
-                supp.supplier_name,
-                p.product_quantity,
-                p.product_price; 
-        """
-        cursor_tab.execute(query_tab) # exucutes an SQL query
+        cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
         all_products = cursor_tab.fetchall() # converts the response into a list of tuples
         # Add data in table by row
         for row in all_products:
@@ -623,12 +692,12 @@ def Purchase_window(*, app: ctk.CTk) -> None:
             # DEFAULT value for current_products
             current_products.append(row)
     except:
-        print("We have a problem with get data about product in Main_Frame")
+        print("We have a problem with get data about product in Purchase Frame")
 
 
 
 
-if __name__ == "__main__":
-    APP = ctk.CTk()
-    Purchase_window(app = APP)
-    APP.mainloop()
+# if __name__ == "__main__":
+#     APP = ctk.CTk()
+#     Purchase_window(app = APP)
+#     APP.mainloop()
