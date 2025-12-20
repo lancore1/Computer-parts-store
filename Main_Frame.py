@@ -364,8 +364,8 @@ def Main_window(*, app: ctk.CTk) -> None:
     # Style for table
     style = ttk.Style()
     style.theme_use("clam")  
-    style.configure("Treeview", font=("Lato", 13,"normal"))       
-    style.configure("Treeview.Heading",  font=("Lato", 16,"bold"))  
+    style.configure("Treeview", font=("Lato", 12,"normal"), rowheight=30)       
+    style.configure("Treeview.Heading",  font=("Lato", 16,"bold"))   
 
     # Wigth
     tree_table.column("id", width=40)  

@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
-import Main_Frame
 import global_state # for get login 
 import globalQuery # have a big Query
 
@@ -228,8 +227,8 @@ def make_sale(cl_name:ctk.CTkEntry,cl_email:ctk.CTkEntry,cl_phone:ctk.CTkEntry,t
                 '''
 
                 cursor_tab.execute(query_tab) # exucutes an SQL query
-    except:
-        print("Make_sale has a error with query or input data")
+    except Exception as e:
+        print(f"Error: {e}")
 
     table.delete(*table.get_children())
 
@@ -254,12 +253,13 @@ def make_sale(cl_name:ctk.CTkEntry,cl_email:ctk.CTkEntry,cl_phone:ctk.CTkEntry,t
     
 # Function who get back to Main_frame
 def get_back(APP) -> None:
+    import Main_Frame 
     try:
         for widget in APP.winfo_children():
             widget.destroy()
         Main_Frame.Main_window(app=APP)
-    except:
-        print("We have a problem with get back to Main_window")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
 
@@ -499,7 +499,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
     # Style
     style = ttk.Style()
     style.theme_use("clam")  
-    style.configure("Treeview", font=("Lato", 13,"normal"), rowheight=30)       
+    style.configure("Treeview", font=("Lato", 12,"normal"), rowheight=30)       
     style.configure("Treeview.Heading",  font=("Lato", 16,"bold"))  
 
     # Wigth
@@ -520,7 +520,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
     # Entry: ID
     entry_id = ctk.CTkEntry(
         master=frame_controls_add, 
-        placeholder_text="Код товару", 
+        placeholder_text="Номер товару", 
         width=230, 
         height=68,
         fg_color="transparent",
