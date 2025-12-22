@@ -18,11 +18,6 @@ def sort_by_cost(combobox, tree) -> None:
 
     # get all data from table as list
     tree_list = [tree.item(row)["values"] for row in tree.get_children()]
-    # alternative way using for loop:
-    # for row in tree_table.get_children():
-    #     tree_list.append(tree_table.item(row)["values"])
-    #     print(tree_table.item(row)["values"])
-    # print(tree_list)
 
     # sort data by cost
     if choose == "Від дешевих до дорогих":
@@ -382,6 +377,9 @@ def Main_window(*, app: ctk.CTk) -> None:
         cursor_tab = CONNECT.cursor()
         cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
         all_products = cursor_tab.fetchall() # converts the response into a list of tuples
+        # clean our list
+        current_products.clear()
+
         # Add data in table by row
         for row in all_products:
             tree_table.insert("", "end", values=row)
