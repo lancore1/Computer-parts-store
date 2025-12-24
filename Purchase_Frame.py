@@ -4,7 +4,7 @@ from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
 import global_state # for get login 
-import globalQuery # have a big Query
+import globalQuery 
 
 
 current_products = []  # stores current table data for filtering
@@ -73,6 +73,9 @@ def search_by_entry(entry_search, tree) -> None:
     cursor_tab = CONNECT.cursor()
     cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
     all_products = cursor_tab.fetchall() #list of tuples
+
+    cursor_tab.close()
+    CONNECT.commit()
 
     text = entry_search.get().lower().strip()
 
@@ -172,83 +175,82 @@ def clear_basket(table:ttk.Treeview) -> None:
 
 
 # Function who make sale about 
-def make_sale(cl_name:ctk.CTkEntry,cl_email:ctk.CTkEntry,cl_phone:ctk.CTkEntry,table:ttk.Treeview,tree_table:ttk.Treeview) -> None:
+def make_sale(cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry, 
+              table:ttk.Treeview, tree_table:ttk.Treeview) -> None:
     global current_products
     name = cl_name.get()
     email = cl_email.get()
     phone = cl_phone.get()
-    # login = global_state.current_employee_login
     basket = [table.item(row)["values"] for row in table.get_children()]
-    cursor_tab = CONNECT.cursor()
-    print(cl_name)
-    print(cl_email)
-    print(cl_phone)
-    print(basket)
-
+    
+    if not basket:
+        print("Кошик порожній!")
+        return
+    
     try:
-
-        if len(basket) == 1:
-            row = basket[0]
-            print(row)
-            curr_prod_id = int(row[0])
-            curr_prod_count = int(row[3])
-            curr_prod_price = float(row[4])
-            query_tab = f'''
-                call make_sale('{global_state.current_employee_login}',
+        cursor_tab = CONNECT.cursor()
+        # Start transaction
+        CONNECT.start_transaction()
+        
+        # Create one check for all product
+        cursor_tab.execute(f'''
+            call create_sale_check(
+                '{global_state.current_employee_login}',
                 '{name}',
                 '{email}',
                 '{phone}',
-                '{curr_prod_id}',
-                '{curr_prod_price}',
-                '{curr_prod_count}'
+                @check_id
+            )
+        ''')
+        
+        # Get id created check
+        cursor_tab.execute("SELECT @check_id")
+        check_id = cursor_tab.fetchone()[0]
+        
+        # Add all product to check
+        for row in basket:
+            curr_prod_id = int(row[0])
+            curr_prod_count = int(row[3])
+            curr_prod_price = float(row[4])
+            
+            cursor_tab.execute(f'''
+                call add_product_to_check(
+                    {check_id},
+                    {curr_prod_id},
+                    {curr_prod_price},
+                    {curr_prod_count}
                 )
-            '''
-            cursor_tab.execute(query_tab) # exucutes an SQL query
-        else:
-            for row in basket:
-                print(row)
-                curr_prod_id = int(row[0])
-                curr_prod_count = int(row[3])
-                curr_prod_price = float(row[4])
-                query_tab = f'''
-                    call make_sale('{global_state.current_employee_login}',
-                    '{name}',
-                    '{email}',
-                    '{phone}',
-                    '{curr_prod_id}',
-                    '{curr_prod_price}',
-                    '{curr_prod_count}'
-                    )
-                '''
-
-                cursor_tab.execute(query_tab) # exucutes an SQL query
+            ''')
+        
+        # Save all changes
+        CONNECT.commit()
+        print(f"Продаж успішно завершено! ID чека: {check_id}")
+        
     except Exception as e:
-        print(f"Error: {e}")
-
+        CONNECT.rollback()
+        print(f"Помилка: {e}")
+        return
+    
+    # clean all entry
     table.delete(*table.get_children())
-
     for e in (cl_name, cl_email, cl_phone):
         e.delete(0, "end")
     
+    # Update product table
     tree_table.delete(*tree_table.get_children())
-
     try:
-        # Query for data in table
-        cursor_tab = CONNECT.cursor()
-        cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
-        all_products = cursor_tab.fetchall() # converts the response into a list of tuples
-        # clean our list
-        current_products.clear()
-
-        # Add data in table by row
+        cursor_tab.execute(globalQuery.QUERY_TAB)
+        all_products = cursor_tab.fetchall()
+        cursor_tab.close()
+        CONNECT.commit()
         current_products.clear()
         for row in all_products:
             tree_table.insert("", "end", values=row)
-            # DEFAULT value for current_products
             current_products.append(row)
-    except:
-        print("We have a problem with get data about product in Purchase Frame")
-    
+    except Exception as e:
+        print(f"Помилка оновлення таблиці: {e}")
+
+
 # Function who get back to Main_frame
 def get_back(APP) -> None:
     import Main_Frame 
@@ -684,6 +686,8 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         cursor_tab = CONNECT.cursor()
         cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
         all_products = cursor_tab.fetchall() # converts the response into a list of tuples
+        cursor_tab.close()
+        CONNECT.commit()
         # clean our list
         current_products.clear()
 

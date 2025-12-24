@@ -377,6 +377,8 @@ def Main_window(*, app: ctk.CTk) -> None:
         cursor_tab = CONNECT.cursor()
         cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
         all_products = cursor_tab.fetchall() # converts the response into a list of tuples
+        cursor_tab.close()
+        CONNECT.commit()
         # clean our list
         current_products.clear()
 
@@ -387,9 +389,3 @@ def Main_window(*, app: ctk.CTk) -> None:
             current_products.append(row)
     except:
         print("We have a problem with get data about product in Main_Frame")
-    
-    
-# if __name__ == "__main__":
-#     APP = ctk.CTk()
-#     Main_window(app = APP)
-#     APP.mainloop()
