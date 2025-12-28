@@ -1,5 +1,4 @@
 from PIL import Image
-import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
@@ -51,13 +50,13 @@ def filter_by_type(combobox, tree) -> None:
         # we copy the current data, keeping in mind that current_products contains all the default data.
         filtered = current_products.copy()
 
-    if choose == "CPU":
+    if choose == "Процесор":
         filtered = [item for item in sourse if item[4] == "Процесор"]
 
-    if choose == "GPU":
+    if choose == "Відеокарта":
         filtered = [item for item in sourse if item[4] == "Відеокарта"]
 
-    if choose == "Motherboard":
+    if choose == "Материнська плата":
         filtered = [item for item in sourse if item[4] == "Материнська плата"]
 
     # populate table with filtered data
@@ -325,7 +324,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         dropdown_text_color="#000000",
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
-        values=["Усі","CPU","GPU","Motherboard"],
+        values=["Усі","Процесор","Відеокарта","Материнська плата"],
         command=lambda value: filter_by_type(combobox_category,tree_table)
     )
     combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
@@ -700,9 +699,3 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         print("We have a problem with get data about product in Purchase Frame")
 
 
-
-
-# if __name__ == "__main__":
-#     APP = ctk.CTk()
-#     Purchase_window(app = APP)
-#     APP.mainloop()

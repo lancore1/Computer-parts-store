@@ -72,12 +72,3 @@ def error_window(parent) -> None:
 
     )
     button_try_again.place(rely=0.5,relx=0.5,anchor="center")
-
-# app = ctk.CTk()
-# app.geometry("1280x800")
-# app.title("Авторизація")
-# error_window(app)
-
-# app.mainloop()
-# if __name__ == "__main__":
-#     error_win_errordow()

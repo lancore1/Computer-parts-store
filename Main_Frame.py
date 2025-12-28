@@ -1,10 +1,8 @@
 from PIL import Image
-import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
 from Main_Frame import *
-from Purchase_Frame import Purchase_window
 import global_state 
 import globalQuery
 
@@ -53,13 +51,13 @@ def filter_by_type(combobox, tree) -> None:
         # we copy the current data, keeping in mind that current_products contains all the default data.
         filtered = current_products.copy()
 
-    if choose == "CPU":
+    if choose == "Процесор":
         filtered = [item for item in sourse if item[4] == "Процесор"]
 
-    if choose == "GPU":
+    if choose == "Відеокарта":
         filtered = [item for item in sourse if item[4] == "Відеокарта"]
 
-    if choose == "Motherboard":
+    if choose == "Материнська плата":
         filtered = [item for item in sourse if item[4] == "Материнська плата"]
 
     # populate table with filtered data
@@ -96,6 +94,7 @@ def search_by_entry(entry_search, tree, all_products) -> None:
 
 # Function who open purchase frame
 def open_purchase(APP) -> None:
+    from Purchase_Frame import Purchase_window
     try:
         for widget in APP.winfo_children():
             widget.destroy()
@@ -103,6 +102,14 @@ def open_purchase(APP) -> None:
     except:
         print("We have a problem with rework window")
     
+def open_supply(APP) -> None:
+    from Supply_Frame import Supply_window
+    try:
+        for widget in APP.winfo_children():
+            widget.destroy()
+        Supply_window(app=APP)
+    except:
+        print("We have a problem with rework window")
 
     
 def Main_window(*, app: ctk.CTk) -> None:
@@ -167,7 +174,7 @@ def Main_window(*, app: ctk.CTk) -> None:
         dropdown_text_color="#000000",
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
-        values=["Усі","CPU","GPU","Motherboard"],
+        values=["Усі","Процесор","Відеокарта","Материнська плата"],
         command=lambda value: filter_by_type(combobox_category,tree_table)
     )
     combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
@@ -300,7 +307,8 @@ def Main_window(*, app: ctk.CTk) -> None:
             dark_image=Image.open("images/supply.png"), 
             size=(20, 20)
         ),
-        compound="right"
+        compound="right",
+        command=lambda:open_supply(APP=app)
     )
     button_supply.pack(side="left")
 

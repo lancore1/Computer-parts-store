@@ -10,3 +10,5 @@ QUERY_TAB = """
         prod_price
     FROM Get_all_prod
     """
+QUERY_SUPPLIER = "SELECT DISTINCT supplier_name FROM supplier"
+QUERY_VENDOR = "SELECT DISTINCT vendor_name from vendor"
