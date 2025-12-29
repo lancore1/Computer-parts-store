@@ -100,7 +100,8 @@ def search_by_entry(entry_search, tree) -> None:
 
 
 #Function who add data from current_products to cart
-def add_data_to_card(entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, table: ttk.Treeview) -> None:
+def add_data_to_card(APP,entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, table: ttk.Treeview) -> None:
+    from message import message_window
     global current_products
     product_id = entry_id.get()
     quantity = entry_quantity.get()
@@ -117,6 +118,7 @@ def add_data_to_card(entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, table
                 break
 
         if product_data is None:
+            message_window(APP,"Помилка!","Товару з таким номером не існує!")
             print("Товар з таким ID не знайдено в current_products")
             return
 
@@ -135,11 +137,14 @@ def add_data_to_card(entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, table
 
                 # if new count biggest than max, we don't do anymore
                 if new_quantity > max_quantity:
+                    message_window(APP,"Помилка!","Немає такої кількості товару у наявності!")
                     print("Немає такої кількості товару у наявності!")
                     return
+                if new_quantity > 6:
+                    price = float(price*0.93)
 
                 new_sum = price * new_quantity
-                new_row = [row[0], row[1], row[2], new_quantity, price, new_sum]
+                new_row = [row[0], row[1], row[2], new_quantity, f"{price:.2f}",f"{new_sum:.2f}"]
 
                 table.delete(iid)
                 table.insert("", "end", values=new_row)
@@ -149,11 +154,12 @@ def add_data_to_card(entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, table
         for item in current_products:
             if int(item[0]) == product_id:
                 if int(item[7]) < quantity:
-                    print("Немає такої кількості товару у наявності!")
+                    message_window(APP,"Помилка!","Немає такої кількості товару у наявності!")
                     return
-
                 price = float(item[-1])
-                new_row = [item[0],item[1],item[2],quantity,price,price * quantity]
+                if quantity > 6:
+                    price = float(price*0.93)
+                new_row = [item[0],item[1],item[2],quantity,f"{price:.2f}",f"{price * quantity:.2f}"]
 
                 table.insert("", "end", values=new_row)
                 return
@@ -174,16 +180,21 @@ def clear_basket(table:ttk.Treeview) -> None:
 
 
 # Function who make sale about 
-def make_sale(cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry, 
+def make_sale(APP,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry, 
               table:ttk.Treeview, tree_table:ttk.Treeview) -> None:
+    from message import message_window
     global current_products
     name = cl_name.get()
     email = cl_email.get()
     phone = cl_phone.get()
     basket = [table.item(row)["values"] for row in table.get_children()]
+
+    if not name or not email or not phone:
+        message_window(APP,"Помилка!","Заповніть усі поля!")
+        return
     
     if not basket:
-        print("Кошик порожній!")
+        message_window(APP,"Помилка!","Кошик порожній, додайте товар!")
         return
     
     try:
@@ -224,7 +235,7 @@ def make_sale(cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry
         # Save all changes
         CONNECT.commit()
         print(f"Продаж успішно завершено! ID чека: {check_id}")
-        
+        message_window(APP,"Успіх!",f"Продаж успішно завершено! Номер чека:{check_id}")
     except Exception as e:
         CONNECT.rollback()
         print(f"Помилка: {e}")
@@ -559,7 +570,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         hover_color="#009BCF",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
-        command=lambda:add_data_to_card(entry_id,entry_quantity,tree_cart)
+        command=lambda:add_data_to_card(app,entry_id,entry_quantity,tree_cart)
     )
     button_add.pack(side="left")
 
@@ -676,7 +687,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         hover_color="#2ECC71",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
-        command=lambda:make_sale(entry_client_name,entry_client_info,entry_client_phone,tree_cart,tree_table)
+        command=lambda:make_sale(app,entry_client_name,entry_client_info,entry_client_phone,tree_cart,tree_table)
     )
     button_checkout.pack(side="left",padx=50)
 
@@ -697,5 +708,4 @@ def Purchase_window(*, app: ctk.CTk) -> None:
             current_products.append(row)
     except:
         print("We have a problem with get data about product in Purchase Frame")
-
 

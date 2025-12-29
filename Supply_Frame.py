@@ -589,27 +589,35 @@ def Supply_window(*, app: ctk.CTk) -> None:
 
 
     def create_supply(category: str) -> None:
+        from message import message_window
         cursor = None
         try:
             cursor = CONNECT.cursor()
             
             # Check required entry
-            if not combobox_supplier.get():
-                print("Виберіть постачальника!")
+            if (not entry_name_product.get() or 
+                not entry_name_model.get() or 
+                not entry_count_delivery.get() or 
+                not entry_sum_delivery.get() or 
+                not entry_unit_price.get()):
+                message_window(app, "Помилка!", "Заповніть усі поля!")
                 return
-            if not entry_name_product.get():
-                print("Введіть назву товару!")
-                return
-            if not entry_count_delivery.get():
-                print("Введіть кількість!")
-                return
-                
+
             # Start transaction
             if not CONNECT.in_transaction:
                 CONNECT.start_transaction()
             
             if category == "Процесор":
                 clock_speed_cpu = f"{cpu_freq_from.get()}-{cpu_freq_to.get()}"
+                # Check required entry
+                if (not cpu_cores.get() or 
+                    not cpu_threads.get() or 
+                    not cpu_freq_from.get() or
+                    not cpu_freq_to.get() or
+                    not cpu_socket.get() or 
+                    not cpu_cache.get()):
+                    message_window(app, "Помилка!", "Заповніть характеристики")
+                    return
                 cursor.callproc('SupplyCPU', (
                     global_state.current_employee_login,
                     combobox_supplier.get(),
@@ -628,6 +636,15 @@ def Supply_window(*, app: ctk.CTk) -> None:
                 ))
                 
             elif category == "Відеокарта":
+                # Check required entry
+                if (not gpu_vram_entry.get() or 
+                    not gpu_freq_entry.get() or 
+                    not gpu_tech_entry.get() or 
+                    not gpu_int_entry.get() or 
+                    not gpu_tdp_entry.get()):
+                    message_window(app, "Помилка!", "Заповніть характеристики!")
+                    return
+
                 cursor.callproc('SupplyGPU', (
                     global_state.current_employee_login,
                     combobox_supplier.get(),
@@ -646,6 +663,14 @@ def Supply_window(*, app: ctk.CTk) -> None:
                 ))
                 
             elif category == "Материнська плата":
+                # Check required entry
+                if (not mb_socket.get() or 
+                    not mb_chipset.get() or 
+                    not mb_slots.get() or 
+                    not mb_form_factor.get() or 
+                    not mb_wifi.get()):
+                    message_window(app, "Помилка!", "Заповніть характеристики!")
+                    return
                 cursor.callproc('SupplyMotherboard', (
                     global_state.current_employee_login,
                     combobox_supplier.get(),
@@ -668,6 +693,7 @@ def Supply_window(*, app: ctk.CTk) -> None:
             # Commit transaction
             CONNECT.commit()
             print(f"Товар '{entry_name_product.get()}' успішно додано!")
+            message_window(app, "Успіх!", f"Товар {entry_name_product.get()} успішно додано!")
             
             # Очистка полів після успішного додавання
             entry_name_product.delete(0, 'end')
