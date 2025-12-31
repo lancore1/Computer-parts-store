@@ -382,7 +382,7 @@ def Main_window(*, app: ctk.CTk) -> None:
 
     try:
         # Query for data in table
-        cursor_tab = CONNECT.cursor()
+        cursor_tab = CONNECT.cursor(buffered=True)
         cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
         all_products = cursor_tab.fetchall() # converts the response into a list of tuples
         cursor_tab.close()

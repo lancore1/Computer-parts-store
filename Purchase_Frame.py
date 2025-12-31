@@ -180,22 +180,24 @@ def clear_basket(table:ttk.Treeview) -> None:
 
 
 # Function who make sale about 
-def make_sale(APP,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry, 
+def make_sale(APP,state:ctk.CTkCheckBox,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry, 
               table:ttk.Treeview, tree_table:ttk.Treeview) -> None:
     from message import message_window
     global current_products
-    name = cl_name.get()
-    email = cl_email.get()
-    phone = cl_phone.get()
+
+    name = cl_name.get().strip() 
+    email = cl_email.get().strip()
+    phone = cl_phone.get().strip()
     basket = [table.item(row)["values"] for row in table.get_children()]
 
     if not name or not email or not phone:
-        message_window(APP,"Помилка!","Заповніть усі поля!")
-        return
-    
+        print("is null")
     if not basket:
         message_window(APP,"Помилка!","Кошик порожній, додайте товар!")
         return
+    if state == 1 and (not name or not email or not phone):
+        message_window(APP,"Помилка!","Введіть усі необхідні поля!")
+        raise Exception("Missing client data")
     
     try:
         cursor_tab = CONNECT.cursor()
@@ -234,8 +236,8 @@ def make_sale(APP,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkE
         
         # Save all changes
         CONNECT.commit()
-        print(f"Продаж успішно завершено! ID чека: {check_id}")
-        message_window(APP,"Успіх!",f"Продаж успішно завершено! Номер чека:{check_id}")
+        print(f"Продаж успішно завершено! ID чеку: {check_id}")
+        message_window(APP,"Успіх!",f"Продаж успішно завершено! Номер чеку:{check_id}")
     except Exception as e:
         CONNECT.rollback()
         print(f"Помилка: {e}")
@@ -271,6 +273,25 @@ def get_back(APP) -> None:
     except Exception as e:
         print(f"Error: {e}")
 
+
+def get_summary_from_basket(table:ttk.Treeview) -> str:
+    total = 0
+    basket = [table.item(row)["values"] for row in table.get_children()]
+    for row in basket:
+        print(row)
+        print(row[-1])
+        total += float(row[-1])
+
+    return str(round(total,2))
+
+
+def show_entries(state:int, frame_entries:ctk.CTkFrame) -> None:
+    if state == 0:
+        frame_entries.pack_forget()
+    elif state == 1:
+        frame_entries.pack(side="left", fill="both", expand=True)
+        
+    
 
 
 def Purchase_window(*, app: ctk.CTk) -> None:
@@ -570,7 +591,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         hover_color="#009BCF",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
-        command=lambda:add_data_to_card(app,entry_id,entry_quantity,tree_cart)
+        command=lambda:on_add_click()
     )
     button_add.pack(side="left")
 
@@ -585,13 +606,12 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         hover_color="#E32600",
         font=("Lato", 16, "bold"),
         text_color="#FFFFFF",
-        command=lambda:clear_basket(tree_cart)
+        command=lambda:on_clear_click()
     )
     button_clear_basket.pack(side="right")
 
 
     # ------------------ 3. ТАБЛИЦЯ КОШИКА (Нижня таблиця) ------------------
-    # height=250 фіксує висоту блоку кошика
     frame_cart = ctk.CTkFrame(master=frame_right_container, fg_color="transparent", border_width=1, height=200)
     frame_cart.pack(side="top", fill="x", expand=False, padx=5, pady=(0, 5))
     
@@ -623,77 +643,154 @@ def Purchase_window(*, app: ctk.CTk) -> None:
     tree_cart.column("price", width=150, anchor="e")
     tree_cart.column("total", width=150, anchor="e")
 
-
+      
     # ------------------ 4. ПАНЕЛЬ ОФОРМЛЕННЯ (Під кошиком) ------------------
     frame_controls_checkout = ctk.CTkFrame(master=frame_right_container, height=68, fg_color="transparent")
     frame_controls_checkout.pack(side="top", fill="x", padx=5, pady=(0, 20))
 
-    # Entry 1: Client Name
-    entry_client_name = ctk.CTkEntry(
-        master=frame_controls_checkout, 
-        placeholder_text="ПІБ Клієнта", 
-        width=230, 
-        height=68,
-        fg_color="transparent",
-        border_color="#00BFFF",
-        border_width= 2,
-        corner_radius=10,
-        font=("Lato", 16),
-        placeholder_text_color="#7F7F7F",
-        text_color="#000000",
-    )
-    entry_client_name.pack(side="left", padx=(5, 10))
-
-    # Entry 2: Phone
-    entry_client_phone = ctk.CTkEntry(
-        master=frame_controls_checkout, 
-        placeholder_text="Номер телефону", 
-        width=230, 
-        height=68,
-        fg_color="transparent",
-        border_color="#00BFFF",
-        border_width= 2,
-        corner_radius=10,
-        font=("Lato", 16),
-        placeholder_text_color="#7F7F7F",
-        text_color="#000000",
-    )
-    entry_client_phone.pack(side="left", padx=(0, 10))
-
-    # Entry 3: Additional (Address/Email)
-    entry_client_info = ctk.CTkEntry(
-        master=frame_controls_checkout, 
-        placeholder_text="Email", 
-        width=230, 
-        height=68,
-        fg_color="transparent",
-        border_color="#00BFFF",
-        border_width= 2,
-        corner_radius=10,
-        font=("Lato", 16),
-        placeholder_text_color="#7F7F7F",
-        text_color="#000000",
-    )
-    entry_client_info.pack(side="left", padx=(0, 10))
-
-    # Button: Confirm Checkout
-    button_checkout = ctk.CTkButton(
+    # Frame for checkbox
+    frame_check_box_sale = ctk.CTkFrame(
         master=frame_controls_checkout,
+        width=160,
+        height=68,
+        fg_color="transparent"
+    )
+    frame_check_box_sale.pack(side="left", fill="y", padx=(0, 10))
+
+    # Checkbox for register or authorize client
+    checkbox_auth = ctk.CTkCheckBox(
+        master=frame_check_box_sale,
+        text="Реєстрація/Авторизація клієнта",
+        text_color="#000000",
+        text_color_disabled="#E90000",
+        font=("Lato", 16),
+        fg_color="#00BFFF",    
+        border_color="#00BFFF",
+        border_width=3,
+        corner_radius=5,
+        hover_color="#0080C0",
+        command=lambda:show_entries(checkbox_auth.get(),frame_entries_container)
+    )
+    checkbox_auth.pack(expand=True, anchor="center") 
+
+    # Frame for button checkout
+    frame_button_container = ctk.CTkFrame(
+        master=frame_controls_checkout,
+        height=68,
+        fg_color="transparent"
+    )
+    frame_button_container.pack(side="right", fill="y", padx=(10, 0))
+
+    button_checkout = ctk.CTkButton(
+        master=frame_button_container,
         text="Завершити замовлення",
-        width=230, 
+        width=230,
         height=68,
         corner_radius=5,
         fg_color="#34D399",
         hover_color="#2ECC71",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
-        command=lambda:make_sale(app,entry_client_name,entry_client_info,entry_client_phone,tree_cart,tree_table)
+        command=lambda:on_sale_click()
     )
-    button_checkout.pack(side="left",padx=50)
+    button_checkout.pack(expand=True, anchor="center")
 
+
+    # Central frame
+    frame_entries_container = ctk.CTkFrame(
+        master=frame_controls_checkout,
+        height=68,
+        fg_color="transparent"
+    )
+    frame_entries_container.pack(side="left", fill="both", expand=True)
+    frame_entries_container.pack_forget()
+    
+    frame_entries_inner = ctk.CTkFrame(master=frame_entries_container, fg_color="transparent")
+    frame_entries_inner.pack(expand=True, fill="y")
+
+    # Entry 1: Client Name
+    entry_client_name = ctk.CTkEntry(
+        master=frame_entries_inner, 
+        placeholder_text="ПІБ Клієнта", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width=2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_name.pack(side="left", padx=5)
+
+    # Entry 2: Phone
+    entry_client_phone = ctk.CTkEntry(
+        master=frame_entries_inner, 
+        placeholder_text="Номер телефону", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width=2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_phone.pack(side="left", padx=5)
+
+    # Entry 3: Additional (Address/Email)
+    entry_client_info = ctk.CTkEntry(
+        master=frame_entries_inner, 
+        placeholder_text="Email", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width=2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_info.pack(side="left", padx=5)
+        
+
+    # Frame for sum
+    frame_sum = ctk.CTkFrame(master=frame_controls_add,width=160,height=45,fg_color="transparent")
+    frame_sum.pack(expand=True)
+    # Variable for save total sum
+    sum_var = ctk.StringVar(value="Загальна сума: 0 ₴")
+    # Entry for summary
+    label_summary = ctk.CTkLabel(master=frame_sum,textvariable=sum_var,text_color="#000000",font=("Lato", 16, "bold"))
+    label_summary.pack(expand=True)
+
+
+    def on_add_click() -> None:
+        add_data_to_card(app, entry_id, entry_quantity, tree_cart)
+        total = get_summary_from_basket(tree_cart)
+        sum_var.set(f"Загальна сума: {total} ₴")
+
+
+    def on_clear_click() -> None:
+        clear_basket(tree_cart)
+        sum_var.set("Загальна сума: 0 ₴")
+
+
+    def on_sale_click() -> None:
+        total = get_summary_from_basket(tree_cart)
+        try: 
+            make_sale(app, checkbox_auth.get(), entry_client_name, entry_client_info, entry_client_phone, tree_cart, tree_table)
+            sum_var.set("Загальна сума: 0 ₴")
+        except Exception as e:
+            print(f"Продаж скасовано: {e}")
+            sum_var.set(f"Загальна сума: {total} ₴")        
+            
+    
     try:
         # Query for data in table
-        cursor_tab = CONNECT.cursor()
+        cursor_tab = CONNECT.cursor(buffered=True)
         cursor_tab.execute(globalQuery.QUERY_TAB) # exucutes an SQL query
         all_products = cursor_tab.fetchall() # converts the response into a list of tuples
         cursor_tab.close()
