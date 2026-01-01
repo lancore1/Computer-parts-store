@@ -27,5 +27,5 @@ CONNECT = mysql.connector.connect(
     port=3306,
     user="root",
     password=DB_PASSWORD,
-    database="silicon_store_db"
+    database="Silicon_Store_DB_TEST"
 )
