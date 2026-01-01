@@ -103,11 +103,11 @@ def open_purchase(APP) -> None:
         print("We have a problem with rework window")
     
 def open_supply(APP) -> None:
-    from Supply_Frame import Supply_window
+    from CreateProduct_Frame import Create_product_window
     try:
         for widget in APP.winfo_children():
             widget.destroy()
-        Supply_window(app=APP)
+        Create_product_window(app=APP)
     except:
         print("We have a problem with rework window")
 
@@ -267,34 +267,59 @@ def Main_window(*, app: ctk.CTk) -> None:
     # add hotkey for button search on press "ENTER"
     app.bind("<Return>", lambda event: button_search.invoke())
 
+    # Frame for all buttons
+    frame_buttons_sale_supply = ctk.CTkFrame(master=frame_top_widget, fg_color="transparent")
+    frame_buttons_sale_supply.place(relx=0.725, rely=0.5, anchor="w")
 
-    # Frame for button sale and supply
-    frame_buttons_sale_supply = ctk.CTkFrame(master=frame_top_widget, width=200, height=65,fg_color="transparent")
-    frame_buttons_sale_supply.place(relx=0.725, rely=0.5, anchor="w") 
+    # Configure frame
+    frame_buttons_sale_supply.columnconfigure(0, weight=1)
+    frame_buttons_sale_supply.columnconfigure(1, weight=1)
 
-    # Button for sale
+    # Frame for sale button
+    frame_sale_container = ctk.CTkFrame(master=frame_buttons_sale_supply, fg_color="transparent")
+    frame_sale_container.grid(row=0, column=0, columnspan=2, pady=(0, 5)) 
+
     button_sale = ctk.CTkButton(
-        master=frame_buttons_sale_supply,
+        master=frame_sale_container,
         text="Продаж",
-        width=115,
+        width=250,
         height=39,
         corner_radius=5,
         fg_color="#34D399",
         hover_color="#2ECC71",
         font=("Lato", 14, "bold"),
-        image=ctk.CTkImage(
-            light_image=Image.open("images/sale.png"), 
-            dark_image=Image.open("images/sale.png"), 
-            size=(20, 20)
-        ),
+        image=ctk.CTkImage(light_image=Image.open("images/sale.png"), size=(20, 20)),
         compound="right",
-        command=lambda:open_purchase(APP=app)
+        command=lambda: open_purchase(APP=app)
     )
-    button_sale.pack(side="left", padx=(0,10))
+    button_sale.pack()
 
-    # Button for supply
+
+    # Frame for add button
+    frame_add_container = ctk.CTkFrame(master=frame_buttons_sale_supply, fg_color="transparent")
+    frame_add_container.grid(row=1, column=1, padx=(5, 0))
+
+    button_create_prod = ctk.CTkButton(
+        master=frame_add_container,
+        text="Додавання",
+        width=115, # Робимо її ширшою, оскільки вона одна в рядку
+        height=39,
+        corner_radius=5,
+        fg_color="#FF3C00",
+        hover_color="#E32600",
+        font=("Lato", 14, "bold"),
+        image=ctk.CTkImage(light_image=Image.open("images/add_prod.png"), size=(20, 20)),
+        compound="right"
+    )
+    button_create_prod.pack()
+
+
+    # Frame for supply button
+    frame_supply_container = ctk.CTkFrame(master=frame_buttons_sale_supply, fg_color="transparent")
+    frame_supply_container.grid(row=1, column=0, padx=(0, 0))
+
     button_supply = ctk.CTkButton(
-        master=frame_buttons_sale_supply,
+        master=frame_supply_container,
         text="Постачання",
         width=115,
         height=39,
@@ -302,17 +327,13 @@ def Main_window(*, app: ctk.CTk) -> None:
         fg_color="#FFB030",
         hover_color="#FF9933",
         font=("Lato", 14, "bold"),
-        image=ctk.CTkImage(
-            light_image=Image.open("images/supply.png"), 
-            dark_image=Image.open("images/supply.png"), 
-            size=(20, 20)
-        ),
+        image=ctk.CTkImage(light_image=Image.open("images/supply.png"), size=(20, 20)),
         compound="right",
-        command=lambda:open_supply(APP=app)
+        command=lambda: open_supply(APP=app)
     )
-    button_supply.pack(side="left")
+    button_supply.pack()
 
-
+    
     # Frame for user info
     frame_user = ctk.CTkFrame(master=frame_top_widget,width=200,height=65,fg_color="transparent")
     frame_user.place(x=1380,y=30)

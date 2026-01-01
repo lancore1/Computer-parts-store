@@ -1,34 +1,266 @@
 from PIL import Image
+from tkinter import ttk
 import customtkinter as ctk
 from DB_connector import CONNECT
-from globalQuery import QUERY_SUPPLIER, QUERY_VENDOR 
-import global_state 
+import global_state # for get login 
+from globalQuery import QUERY_VENDOR, QUERY_SUPPLIER, QUERY_SUPPLY
 
 
-def add_elem_to_adaptive_frame(cpu_frame: ctk.CTkFrame,
-    gpu_frame: ctk.CTkFrame, mb_frame: ctk.CTkFrame, show_frame: ctk.CTkFrame) -> None:
-    # Hide all frame
-    cpu_frame.pack_forget()
-    gpu_frame.pack_forget()
-    mb_frame.pack_forget()
+current_products = []  # stores current table data for filtering
+
+
+# Function who sort data in table by cost
+def sort_by_cost(combobox, tree) -> None: 
+    # get choose from combobox
+    choose = combobox.get()
+
+    # get all data from table as list
+    tree_list = [tree.item(row)["values"] for row in tree.get_children()]
+
+    # sort data by cost
+    if choose == "Від дешевих до дорогих":
+        tree_list.sort(key=lambda item: float(item[-1]))
+    if choose == "Від дорогих до дешевих":
+        tree_list.sort(key=lambda item: float(item[-1]), reverse=True)
+
+    # remove all data in table, work faster than delete by row in for
+    tree.delete(*tree.get_children())
+
+    # populate table with sorted data
+    for row in tuple(tree_list):
+        tree.insert("", "end", values=row)
+
+
+# Function who filtered data in table by type category
+def filter_by_type(combobox, tree) -> None:
+    global current_products
+    # get choose
+    choose = combobox.get()
+
+    # remove all data in table, work faster than delete by row in for 
+    tree.delete(*tree.get_children())
+
+    # saved data who filtered 
+    filtered = []
+
+    # save the data source for the table as current data 
+    sourse = current_products
+
+    if choose == "Усі":
+        # we copy the current data, keeping in mind that current_products contains all the default data.
+        filtered = current_products.copy()
+
+    if choose == "Процесор":
+        filtered = [item for item in sourse if item[4] == "Процесор"]
+
+    if choose == "Відеокарта":
+        filtered = [item for item in sourse if item[4] == "Відеокарта"]
+
+    if choose == "Материнська плата":
+        filtered = [item for item in sourse if item[4] == "Материнська плата"]
+
+    # populate table with filtered data
+    tree.delete(*tree.get_children())
+    for row in tuple(filtered):
+        tree.insert("", "end", values=row)
+
+
+# Function who filtere data by entered text from entry search
+def search_by_entry(entry_search, tree) -> None:
+    global current_products
+
+    cursor_tab = CONNECT.cursor()
+    cursor_tab.execute(QUERY_SUPPLY) # exucutes an SQL query
+    all_products = cursor_tab.fetchall() #list of tuples
+
+    cursor_tab.close()
+    CONNECT.commit()
+
+    text = entry_search.get().lower().strip()
+
+    # clear table 
+    tree.delete(*tree.get_children())
+
+    filtered_list = []
+
+    # if text is empty
+    if text == "":
+        current_products = all_products.copy()
+    else:
+        # if text not empty, we save copy in current_products from filtered_list
+        for item in all_products:
+            if text in item[1].lower():
+                filtered_list.append(item)
+        current_products = filtered_list.copy()
+
+    # populate table with current_products
+    tree.delete(*tree.get_children())
+    for row in tuple(current_products):
+        tree.insert("", "end", values=row)
+
+
+#Function who add data from current_products to cart
+def add_data_to_card(APP,entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, table: ttk.Treeview) -> None:
+    from message import message_window
+    global current_products
+    product_id = entry_id.get()
+    quantity = entry_quantity.get()
+
+    try:
+        # converts product_id,quantity because ctk.CTkEntry.get() return "str" not number
+        product_id = int(product_id)
+        quantity = int(quantity)
+
+        product_data = None
+        for item in current_products:
+            if int(item[0]) == product_id:
+                product_data = item
+                break
+
+        if product_data is None:
+            message_window(APP,"Помилка!","Товару з таким номером не існує!")
+            print("Товар з таким ID не знайдено в current_products")
+            return
+
+        max_quantity = int(product_data[7])  # available quantity in stock for a specific product_id
+
+
+        # checking the product for duplicates
+        for iid in table.get_children(): # iid have a unique id of row in table 
+            row = table.item(iid)["values"]
+            print(row)
+
+            if int(row[0]) == product_id:  # if product exists
+                price = float(row[4])
+
+                new_quantity = int(row[3]) + quantity
+
+                # if new count biggest than max, we don't do anymore
+                if new_quantity > max_quantity:
+                    message_window(APP,"Помилка!","Немає такої кількості товару у наявності!")
+                    print("Немає такої кількості товару у наявності!")
+                    return
+                if new_quantity > 6:
+                    price = float(price*0.93)
+
+                new_sum = price * new_quantity
+                new_row = [row[0], row[1], row[2], new_quantity, f"{price:.2f}",f"{new_sum:.2f}"]
+
+                table.delete(iid)
+                table.insert("", "end", values=new_row)
+                return
+
+        #  if the product is not available we search for it in current_products
+        for item in current_products:
+            if int(item[0]) == product_id:
+                if int(item[7]) < quantity:
+                    message_window(APP,"Помилка!","Немає такої кількості товару у наявності!")
+                    return
+                price = float(item[-1])
+                if quantity > 6:
+                    price = float(price*0.93)
+                new_row = [item[0],item[1],item[2],quantity,f"{price:.2f}",f"{price * quantity:.2f}"]
+
+                table.insert("", "end", values=new_row)
+                return
+
+        print("Товар з таким ID не знайдено")
+
+    except ValueError:
+        print("Помилка: неправильні дані")
+    finally:
+        entry_id.delete(0, "end")
+        entry_quantity.delete(0, "end")
+
+
+# Function who clear basket
+def clear_basket(table:ttk.Treeview) -> None:
+    # clear table 
+    table.delete(*table.get_children())
+
+
+# Function who make sale about 
+def make_sale(APP,state:ctk.CTkCheckBox,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry, 
+              table:ttk.Treeview, tree_table:ttk.Treeview) -> None:
+    from message import message_window
+    global current_products
+
+    name = cl_name.get().strip() 
+    email = cl_email.get().strip()
+    phone = cl_phone.get().strip()
+    basket = [table.item(row)["values"] for row in table.get_children()]
+
+    if not name or not email or not phone:
+        print("is null")
+    if not basket:
+        message_window(APP,"Помилка!","Кошик порожній, додайте товар!")
+        return
+    if state == 1 and (not name or not email or not phone):
+        message_window(APP,"Помилка!","Введіть усі необхідні поля!")
+        raise Exception("Missing client data")
     
-    # Show the required 
-    show_frame.pack(expand=True, fill="both")
-    print(f"Showing frame: {show_frame}")
-
-
-def update_category_fields(choice: str,
-                           cpu_frame: ctk.CTkFrame, 
-                           gpu_frame: ctk.CTkFrame, 
-                           mb_frame: ctk.CTkFrame) -> None:
-    if choice == "Процесор":
-        add_elem_to_adaptive_frame(cpu_frame, gpu_frame, mb_frame, cpu_frame)
-    elif choice == "Відеокарта":
-        add_elem_to_adaptive_frame(cpu_frame, gpu_frame, mb_frame, gpu_frame)
-    elif choice == "Материнська плата":
-        add_elem_to_adaptive_frame(cpu_frame, gpu_frame, mb_frame, mb_frame)
+    try:
+        cursor_tab = CONNECT.cursor()
+        # Start transaction
+        CONNECT.start_transaction()
+        
+        # Create one check for all product
+        cursor_tab.execute(f'''
+            call create_sale_check(
+                '{global_state.current_employee_login}',
+                '{name}',
+                '{email}',
+                '{phone}',
+                @check_id
+            )
+        ''')
+        
+        # Get id created check
+        cursor_tab.execute("SELECT @check_id")
+        check_id = cursor_tab.fetchone()[0]
+        
+        # Add all product to check
+        for row in basket:
+            curr_prod_id = int(row[0])
+            curr_prod_count = int(row[3])
+            curr_prod_price = float(row[4])
+            
+            cursor_tab.execute(f'''
+                call add_product_to_check(
+                    {check_id},
+                    {curr_prod_id},
+                    {curr_prod_price},
+                    {curr_prod_count}
+                )
+            ''')
+        
+        # Save all changes
+        CONNECT.commit()
+        print(f"Продаж успішно завершено! ID чеку: {check_id}")
+        message_window(APP,"Успіх!",f"Продаж успішно завершено! Номер чеку:{check_id}")
+    except Exception as e:
+        CONNECT.rollback()
+        print(f"Помилка: {e}")
+        return
     
-    print(f"Updated to: {choice}")
+    # clean all entry
+    table.delete(*table.get_children())
+    for e in (cl_name, cl_email, cl_phone):
+        e.delete(0, "end")
+    
+    # Update product table
+    tree_table.delete(*tree_table.get_children())
+    try:
+        cursor_tab.execute(QUERY_SUPPLY)
+        all_products = cursor_tab.fetchall()
+        cursor_tab.close()
+        CONNECT.commit()
+        current_products.clear()
+        for row in all_products:
+            tree_table.insert("", "end", values=row)
+            current_products.append(row)
+    except Exception as e:
+        print(f"Помилка оновлення таблиці: {e}")
 
 
 def get_supplier_list() -> list[str]:
@@ -50,6 +282,8 @@ def get_vendor_list() -> list[str]:
     cursor.close()
     return vendors
 
+
+# Function who get back to Main_frame
 def get_back(APP) -> None:
     import Main_Frame 
     try:
@@ -60,14 +294,45 @@ def get_back(APP) -> None:
         print(f"Error: {e}")
 
 
+def get_summary_from_basket(table:ttk.Treeview) -> str:
+    total = 0
+    basket = [table.item(row)["values"] for row in table.get_children()]
+    for row in basket:
+        print(row)
+        print(row[-1])
+        total += float(row[-1])
+
+    return str(round(total,2))
+
+
+def show_entries(state:int, frame_entries:ctk.CTkFrame) -> None:
+    if state == 0:
+        frame_entries.pack_forget()
+    elif state == 1:
+        frame_entries.pack(side="left", fill="both", expand=True)
+        
+    
+
+
 def Supply_window(*, app: ctk.CTk) -> None:
+    global current_products
+
     app.geometry("1920x1080")
     app.title("Постачання товару")
     app.configure(fg_color="#FFFFFF")
     # open app in full screen
     app.after(50, lambda: app.state("zoomed"))
 
-   
+    #Frame left widget
+    frame_left_widget = ctk.CTkFrame(master=app,
+        width=220,
+        height=965,
+        corner_radius=0,
+        fg_color="#00BFFF"
+    )
+    frame_left_widget.place(x=0, y=115,relheight=0.893)
+    frame_left_widget.propagate(False)
+
     #Frame top widget
     frame_top_widget = ctk.CTkFrame(master=app,
         width=1920,
@@ -78,6 +343,83 @@ def Supply_window(*, app: ctk.CTk) -> None:
     frame_top_widget.place(x=0, y=0,relwidth=1)
     frame_top_widget.propagate(False)
 
+    #Frame for type category
+    frame_type_category = ctk.CTkFrame(master=frame_top_widget,width=200,height=90,fg_color="transparent")
+    frame_type_category.place(x=8,y=16)
+    frame_type_category.propagate(False)
+
+    #Label category
+    label_category = ctk.CTkLabel(   
+        master=frame_type_category,  
+        text="Тип категорії", 
+        width=10, 
+        height=1, 
+        corner_radius=8, 
+        fg_color="transparent", 
+        text_color="#FFFFFF", 
+        font=("Lato", 24, "bold")
+    )
+    label_category.grid(row=0,column=0,padx=0)
+
+    #Combobox type category
+    combobox_category = ctk.CTkComboBox(
+        master=frame_type_category,
+        width=153,
+        height=25,  
+        corner_radius=5, 
+        text_color="#000000", 
+        font=("Lato", 16, "bold"),
+        fg_color="#FFFFFF",
+        button_color="#FFFFFF",
+        border_color="#FFFFFF",
+        dropdown_fg_color="#FFFFFF",
+        dropdown_text_color="#000000",
+        dropdown_font=("Lato", 14, "normal"),
+        dropdown_hover_color="#E5E5E5",
+        values=["Усі","Процесор","Відеокарта","Материнська плата"],
+        command=lambda value: filter_by_type(combobox_category,tree_table)
+    )
+    combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
+
+     #Frame for variable sort
+    frame_var_sort = ctk.CTkFrame(master=frame_top_widget,width=200,height=90,fg_color="transparent")
+    frame_var_sort.place(x=190,y=16)
+    frame_var_sort.propagate(False)
+    frame_var_sort.place_forget()
+
+    #Label category
+    label_sort = ctk.CTkLabel(   
+        master=frame_var_sort,  
+        text="Сортування", 
+        width=10, 
+        height=1, 
+        corner_radius=8, 
+        fg_color="transparent", 
+        text_color="#FFFFFF", 
+        font=("Lato", 24, "bold")
+    )
+    label_sort.grid(row=0,column=0,padx=0)
+             
+
+    #Combobox for sort
+    combobox_sort = ctk.CTkComboBox(
+        master=frame_var_sort,
+        width=231,
+        height=25,  
+        corner_radius=5, 
+        text_color="#000000", 
+        font=("Lato", 16, "bold"),
+        fg_color="#FFFFFF",
+        button_color="#FFFFFF",
+        border_color="#FFFFFF",
+        dropdown_fg_color="#FFFFFF",
+        dropdown_text_color="#000000",
+        dropdown_font=("Lato", 14, "normal"),
+        dropdown_hover_color="#E5E5E5",
+        values=["Від дешевих до дорогих", "Від дорогих до дешевих"],
+        command=lambda value: sort_by_cost(combobox_sort,tree_table)
+    )
+    combobox_sort.grid(row=1,column=0,padx=(90,0), pady=(19,0))
 
     # Frame for search 
     frame_search = ctk.CTkFrame(
@@ -105,7 +447,6 @@ def Supply_window(*, app: ctk.CTk) -> None:
         corner_radius=27
     )
     entry_search.grid(row=0,column=0)
-    entry_search.configure(state="disable")
 
 
     # Button for search
@@ -114,36 +455,41 @@ def Supply_window(*, app: ctk.CTk) -> None:
         width=40,
         height=40,
         image=ctk.CTkImage(
-            light_image=Image.open("images/search.png"), 
+            light_image=Image.open("images/search.png"),
             size=(30, 30)
         ),
         text="",
         fg_color="#D9D9D9",
         bg_color="#D9D9D9",
         hover_color="#BFBFBF",
-        corner_radius=20
+        corner_radius=20,
+        command=lambda: search_by_entry(entry_search,tree_table)
+
     )
     button_search.place(relx=0.90, rely=0.5, anchor="center")
-    button_search.configure(state="disable")
+    # add hotkey for button search on press "ENTER"
+    app.bind("<Return>", lambda event: button_search.invoke())
+
 
     # Frame for button sale and supply
-    return_button_frame = ctk.CTkFrame(master=frame_top_widget, width=200, height=65,fg_color="transparent")
-    return_button_frame.place(relx=0.725, rely=0.5, anchor="w") 
+    retrun_button_frame = ctk.CTkFrame(master=frame_top_widget, width=200, height=65,fg_color="transparent")
+    retrun_button_frame.place(relx=0.725, rely=0.5, anchor="w") 
 
-    # Button for supply
+    # Button for sale
     return_button = ctk.CTkButton(
-        master=return_button_frame,
+        master=retrun_button_frame,
         text="До головного меню",
         width=115,
         height=39,
         corner_radius=5,
-        fg_color="#FFB030",
-        hover_color="#FF9933",
+        fg_color="#34D399",
+        hover_color="#2ECC71",
         font=("Lato", 14, "bold"),
         compound="right",
-        command=lambda:get_back(APP=app)
+        command=lambda:get_back(APP=app) 
     )
     return_button.pack(side="left")
+
 
     # Frame for user info
     frame_user = ctk.CTkFrame(master=frame_top_widget,width=200,height=65,fg_color="transparent")
@@ -163,589 +509,326 @@ def Supply_window(*, app: ctk.CTk) -> None:
     user_label.grid(row=0,column=0,padx=0)
 
     # User image
-    try:
-        user_image = ctk.CTkImage(
-            light_image=Image.open("images/image_title_reverse.png"),
-            dark_image=Image.open("images/image_title_reverse.png"),
-            size=(50,50)
-        )
-        label_user_image = ctk.CTkLabel(master=frame_user, image=user_image, text="")
-        label_user_image.grid(row=0, column=1, padx=10)
-    except:
-        pass
-
-    #Frame for main label
-    frame_label = ctk.CTkFrame(master=app,width=506,height=100,fg_color="transparent")
-    frame_label.pack(anchor="center",pady=(115,0))
-
-    # text for label
-    label_text = ctk.CTkLabel(master=frame_label,
-        width=506,
-        height=100,
-        text="ПОСТАЧАННЯ НОВОГО ТОВАРУ",
-        text_color="#000000",
-        font=("Lato", 32, "bold")
+    user_image = ctk.CTkImage(
+        light_image=Image.open("images/image_title_reverse.png"),
+        dark_image=Image.open("images/image_title_reverse.png"),
+        size=(50,50)
     )
-    label_text.pack(anchor="center")
+    label_user_image = ctk.CTkLabel(master=frame_user, image=user_image, text="")
+    label_user_image.grid(row=0, column=1, padx=10)
 
 
-    #Frame for supply product CONTAINER
-    frame_supply = ctk.CTkFrame(master=app,width=1920,fg_color="transparent")
-    frame_supply.pack(fill="both",expand=True)
-
-    # --- LEFT SIDE: NON ADAPTIVE ---
-    frame_for_non_adaptive_element = ctk.CTkFrame(master=frame_supply,width=500,height=700,fg_color="transparent")
-    frame_for_non_adaptive_element.pack(side="left", anchor="nw", padx=(100,50))
-
-
-    #Frame for combobox from supplier
-    frame_supplier = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_supplier.grid(row=0, column=0, pady=(5, 10), sticky="w")
-
-    label_supplier = ctk.CTkLabel(
-        master=frame_supplier,
-        text="ПОСТАЧАЛЬНИК",
-        text_color="#000000",
-        font=("Lato", 20, "bold")
-    )
-    label_supplier.grid(row=0,column=0)
-
-    combobox_supplier = ctk.CTkComboBox(
-        master=frame_supplier,
-        width=153, 
-        height=25, 
-        corner_radius=5,
-        text_color="#000000", font=("Lato", 16, "bold"),
-        fg_color="#FFFFFF", button_color="#00BFFF",
-        border_color="#00BFFF",
-        dropdown_fg_color="#FFFFFF",
-        dropdown_text_color="#000000",
-        dropdown_font=("Lato", 14),
-        dropdown_hover_color="#E5E5E5",
-        values=get_supplier_list()
-    )
-    combobox_supplier.grid(row=1,column=0)
+    # =================================================================================
+    #                           ГОЛОВНИЙ ФРЕЙМ (RIGHT CONTAINER)
+    # =================================================================================
+    # Цей фрейм містить ВСІ таблиці та поля вводу праворуч від меню
+    frame_right_container = ctk.CTkFrame(master=app, fg_color="transparent")
+    frame_right_container.pack(side="right", fill="both", expand=True, padx=(220, 0), pady=(115, 0))
 
 
-    #Frame for combobox from category
-    frame_type_category = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_type_category.grid(row=0, column=1)
-
-    label_category = ctk.CTkLabel(
-        master=frame_type_category,
-        text="ТИП КАТЕГОРІЇ",
-        text_color="#000000",
-        font=("Lato", 20, "bold")
-    )
-    label_category.grid(row=0,column=0)
-
-    combobox_category = ctk.CTkComboBox(
-        master=frame_type_category,
-        width=153, 
-        height=25, 
-        corner_radius=5,
-        text_color="#000000", font=("Lato", 16, "bold"),
-        fg_color="#FFFFFF", button_color="#00BFFF",
-        border_color="#00BFFF",
-        dropdown_fg_color="#FFFFFF",
-        dropdown_text_color="#000000",
-        dropdown_font=("Lato", 14),
-        dropdown_hover_color="#E5E5E5",
-        values=["Процесор","Відеокарта", "Материнська плата", ]
-    )
-    combobox_category.grid(row=1,column=0)
-
-
-    #Frame for combobox from vendor
-    frame_vendor = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_vendor.grid(row=2, column=0, padx=7,pady=(5, 10), sticky="w")
-
-    label_vendor = ctk.CTkLabel(
-        master=frame_vendor,
-        text="ВИРОБНИК",
-        text_color="#000000",
-        font=("Lato", 20, "bold")
-    )
-    label_vendor.grid(row=0,column=0)
-
-    combobox_vendor = ctk.CTkComboBox(
-        master=frame_vendor,
-        width=153, 
-        height=25, 
-        corner_radius=5,
-        text_color="#000000", font=("Lato", 16, "bold"),
-        fg_color="#FFFFFF", button_color="#00BFFF",
-        border_color="#00BFFF",
-        dropdown_fg_color="#FFFFFF",
-        dropdown_text_color="#000000",
-        dropdown_font=("Lato", 14),
-        dropdown_hover_color="#E5E5E5",
-        values=get_vendor_list()
-    )
-    combobox_vendor.grid(row=1,column=0)
-
-    #Frame for product name
-    frame_product_name = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_product_name.grid(row=3, column=0, pady=(20, 10), sticky="w")
-
-    entry_name_product = ctk.CTkEntry(
-        master=frame_product_name,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Назва товару",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_name_product.pack(side="left")
-
-    #Frame for product name (Model)
-    frame_product_model= ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_product_model.grid(row=4, column=0, pady=(0, 10), sticky="w")
-
-    entry_name_model = ctk.CTkEntry(
-        master=frame_product_model,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Модель",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_name_model.pack(side="left")
-
-    #Frame for count of product delivery
-    frame_product_quantity= ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_product_quantity.grid(row=5, column=0, pady=(0, 10), sticky="w")
-
-    entry_count_delivery = ctk.CTkEntry(
-        master=frame_product_quantity,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Кількість постачі, шт",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_count_delivery.pack(side="left")
-
-    #Frame for delivery sum
-    frame_delivery_sum= ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_delivery_sum.grid(row=6, column=0, pady=(0, 10), sticky="w")
-
-    entry_sum_delivery = ctk.CTkEntry(
-        master=frame_delivery_sum,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Загальна сумма постачі, грн",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_sum_delivery.pack(side="left")
-
-    #Frame for unit price
-    frame_unit_price= ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_unit_price.grid(row=7, column=0, pady=(0, 10), sticky="w")
-
-    entry_unit_price = ctk.CTkEntry(
-        master=frame_unit_price,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Ціна за одиницю, грн",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_unit_price.pack(side="left")
-
-
-    # --- RIGHT SIDE: ADAPTIVE FRAME ---
+    # ------------------ 1. ТАБЛИЦЯ ТОВАРІВ (Верхня частина) ------------------
+    frame_table = ctk.CTkFrame(master=frame_right_container, fg_color="transparent", border_width=1)
+    # expand=True дозволяє цій таблиці займати все вільне місце по вертикалі, яке залишиться
+    frame_table.pack(side="top", fill="both", expand=True, padx=5, pady=(5, 5))
     
-    frame_for_adaptive_element = ctk.CTkFrame(master=frame_supply, width=500, height=700, fg_color="transparent")
-    frame_for_adaptive_element.pack(side="left", anchor="nw", padx=200, pady=0)
-    frame_for_adaptive_element.pack_propagate(False)
+    frame_table.grid_columnconfigure(0, weight=1) 
+    frame_table.grid_rowconfigure(0, weight=1)
     
-    # Header Label for Adaptive Frame
-    label_adaptive_header = ctk.CTkLabel(
-        master=frame_for_adaptive_element,
-        text="Оберіть значення характеристик\nтовару з перелічених:",
-        text_color="#000000",
-        font=("Lato", 16, "bold"),
-        justify="center"
-    )
-    label_adaptive_header.pack(pady=(0, 20), anchor="center")
+    columns = ("id", "name", "model","specs","category","vendor","supplier","available_quantity")
+    titles  = ["№","Назва","Модель","Характеристики","Тип категорії","Виробник","Постачальник","В наявності"]
+    
+    tree_table = ttk.Treeview(master=frame_table,columns=columns, show="headings")
+    for col, title in zip(columns, titles):
+        tree_table.heading(col, text=title)
+    
+    tree_table.grid(row=0, column=0, sticky="nsew", padx=(5,0), pady=(5,5))
+    
+    # Scrollbar
+    scrollbar_y = ctk.CTkScrollbar(frame_table, orientation="vertical",command=tree_table.yview,height=1)
+    scrollbar_y.grid(row=0, column=1, sticky="ns", padx=(0,5), pady=(5,5))
+    tree_table.configure(yscrollcommand=scrollbar_y.set)
 
-    # Inner container for the fields
-    frame_adaptive_content = ctk.CTkFrame(master=frame_for_adaptive_element,fg_color="transparent")
-    frame_adaptive_content.pack(fill="both", expand=True)
+    # Style
+    style = ttk.Style()
+    style.theme_use("clam")  
+    style.configure("Treeview", font=("Lato", 12,"normal"), rowheight=30)       
+    style.configure("Treeview.Heading",  font=("Lato", 16,"bold"))  
 
-    cpu_frame = ctk.CTkFrame(master=frame_adaptive_content, fg_color="transparent")
-
-    # Cores
-    lbl_cores = ctk.CTkLabel(cpu_frame, text="Кількість ядер", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_cores.grid(row=0, column=0, sticky="w", pady=(0, 4))
-
-    cpu_cores = ctk.CTkComboBox(cpu_frame, values=["2", "4", "6", "8", "12", "16"],
-                                width=170, height=35, corner_radius=8,
-                                border_color="#00BFFF", button_color="#00BFFF",
-                                text_color="#000000", fg_color="#FFFFFF",
-                                font=("Lato", 16), dropdown_font=("Lato", 14))
-    cpu_cores.grid(row=1, column=0, pady=(0, 12), sticky="w")
-
-    # Threads
-    lbl_threads = ctk.CTkLabel(cpu_frame, text="Кількість потоків", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_threads.grid(row=2, column=0, sticky="w", pady=(0, 4))
-
-    cpu_threads = ctk.CTkComboBox(cpu_frame, values=["4", "8", "12", "16", "24", "32"],
-                                width=170, height=35, corner_radius=8,
-                                border_color="#00BFFF", button_color="#00BFFF",
-                                text_color="#000000", fg_color="#FFFFFF",
-                                font=("Lato", 16), dropdown_font=("Lato", 14))
-    cpu_threads.grid(row=3, column=0, pady=(0, 12), sticky="w")
-
-    # CPU speed: from -> to
-    lbl_freq = ctk.CTkLabel(cpu_frame, text="Тактова частота (GHz)", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_freq.grid(row=4, column=0, sticky="w", pady=(0, 4))
-
-    cpu_freq_from = ctk.CTkEntry(cpu_frame, placeholder_text="Від",
-                                width=140, height=35, corner_radius=8,
-                                border_width=2, border_color="#00BFFF",
-                                text_color="#000000", fg_color="transparent",
-                                font=("Lato", 16), placeholder_text_color="#555555")
-    cpu_freq_from.grid(row=5, column=0, padx=(0, 10), pady=(0, 12), sticky="w")
-
-    cpu_freq_to = ctk.CTkEntry(cpu_frame, placeholder_text="До",
-                            width=140, height=35, corner_radius=8,
-                            border_width=2, border_color="#00BFFF",
-                            text_color="#000000", fg_color="transparent",
-                            font=("Lato", 16), placeholder_text_color="#555555")
-    cpu_freq_to.grid(row=5, column=1, padx=(0, 5), pady=(0, 12), sticky="w")
-
-    # Socket
-    lbl_socket = ctk.CTkLabel(cpu_frame, text="Сокет", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_socket.grid(row=6, column=0, sticky="w", pady=(0, 4))
-
-    cpu_socket = ctk.CTkComboBox(cpu_frame, values=["AM5", "AM4", "LGA1851","LGA1700"],
-                    width=170, height=35, corner_radius=8,
-                    border_color="#00BFFF", button_color="#00BFFF",
-                    text_color="#000000", fg_color="#FFFFFF",
-                    font=("Lato", 16),
-                    dropdown_font=("Lato", 14))
-    cpu_socket.grid(row=7, column=0, pady=(0, 12), sticky="w")
-
-    # Cache L3
-    lbl_cache = ctk.CTkLabel(cpu_frame, text="Кеш L3", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_cache.grid(row=8, column=0, sticky="w", pady=(0, 4))
-
-    cpu_cache = ctk.CTkComboBox(cpu_frame, values=["8", "16", "32", "64"],
-                                width=170, height=35, corner_radius=8,
-                                border_color="#00BFFF", button_color="#00BFFF",
-                                text_color="#000000", fg_color="#FFFFFF",
-                                font=("Lato", 16), dropdown_font=("Lato", 14))
-    cpu_cache.grid(row=9, column=0, pady=(0, 12), sticky="w")
-
-
-    gpu_frame = ctk.CTkFrame(master=frame_adaptive_content, fg_color="transparent")
-
-    # Size of VRAM
-    lbl_vram = ctk.CTkLabel(gpu_frame, text="Обсяг відеопам’яті", text_color="#000000", 
-                font=("Lato", 16, "bold"))
-    lbl_vram.grid(row=0, column=0, sticky="w", pady=4, padx=(0, 20))
-    gpu_vram_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 8 GB", 
-                                width=275, height=35, corner_radius=10, border_width=2, 
-                                border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
-                                font=("Lato", 16), placeholder_text_color="#555555")
-    gpu_vram_entry.grid(row=1, column=0, pady=4)
-
-    # GPU speed
-    lbl_gpu_freq = ctk.CTkLabel(gpu_frame, text="Частота GPU", text_color="#000000", 
-                font=("Lato", 16, "bold"))
-    lbl_gpu_freq.grid(row=2, column=0, sticky="w", pady=4)
-    gpu_freq_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 2.5 GHz", 
-                                width=275, height=35, corner_radius=10, border_width=2, 
-                                border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
-                                font=("Lato", 16), placeholder_text_color="#555555")
-    gpu_freq_entry.grid(row=3, column=0, pady=4)
-
-    # Technology
-    lbl_tech = ctk.CTkLabel(gpu_frame, text="Технології", text_color="#000000", 
-                font=("Lato", 16, "bold"))
-    lbl_tech.grid(row=4, column=0, sticky="w", pady=4)
-    gpu_tech_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. DLSS 3.0, Ray Tracing", 
-                                width=275, height=35, corner_radius=10, border_width=2, 
-                                border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
-                                font=("Lato", 16), placeholder_text_color="#555555")
-    gpu_tech_entry.grid(row=5, column=0, pady=4)
-
-    # Інтерфейси
-    lbl_int = ctk.CTkLabel(gpu_frame, text="Інтерфейси", text_color="#000000", 
-                font=("Lato", 16, "bold"))
-    lbl_int.grid(row=6, column=0, sticky="w", pady=4)
-    gpu_int_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. HDMI 2.1, DP 1.4", 
-                                width=275, height=35, corner_radius=10, border_width=2, 
-                                border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
-                                font=("Lato", 16), placeholder_text_color="#555555")
-    gpu_int_entry.grid(row=7, column=0, pady=4)
-
-    # TDP
-    lbl_watt = ctk.CTkLabel(gpu_frame, text="Енергоспоживання", text_color="#000000", 
-                font=("Lato", 16, "bold"))
-    lbl_watt.grid(row=8, column=0, sticky="w", pady=4)
-    gpu_tdp_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 280 W", 
-                                width=275, height=35, corner_radius=10, border_width=2, 
-                                border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
-                                font=("Lato", 16), placeholder_text_color="#555555")
-    gpu_tdp_entry.grid(row=9, column=0, pady=4)
-
-
-    mb_frame = ctk.CTkFrame(master=frame_adaptive_content, fg_color="transparent")
-
-    # Socket
-    lbl_mb_socket = ctk.CTkLabel(mb_frame, text="Сокет", text_color="#000000",
-                font=("Lato", 18, "bold"))
-    lbl_mb_socket.grid(row=0, column=0, sticky="w", pady=(0, 4))
+    # Wigth
+    tree_table.column("id", width=40)  
+    tree_table.column("name", width=230)  
+    tree_table.column("model", width=120)  
+    tree_table.column("specs", width=450)  
+    tree_table.column("vendor", width=120)  
+    tree_table.column("category", width=175)  
+    tree_table.column("available_quantity", width=138)  
     
 
-    mb_socket = ctk.CTkComboBox(mb_frame, values=["AM5", "AM4", "LGA1851","LGA1700"],
-                    width=170, height=35, corner_radius=8,
-                    border_color="#00BFFF", button_color="#00BFFF",
-                    text_color="#000000", fg_color="#FFFFFF",
-                    font=("Lato", 16),
-                    dropdown_font=("Lato", 14))
-    mb_socket.grid(row=1, column=0, pady=(0, 12), sticky="w")
+    # ------------------ 2. ПАНЕЛЬ ДОДАВАННЯ (Між таблицями) ------------------
+    frame_controls_add = ctk.CTkFrame(master=frame_right_container, height=68, fg_color="transparent")
+    frame_controls_add.pack(side="top", fill="x", padx=5, pady=(0, 5))
 
-    # Chipset
-    lbl_chipset = ctk.CTkLabel(mb_frame, text="Чипсет", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_chipset.grid(row=2, column=0, sticky="w", pady=(0, 4))
-
-    mb_chipset = ctk.CTkEntry(mb_frame, placeholder_text="Чипсет",
-                width=275, height=35, corner_radius=10,
-                border_width=2, border_color="#00BFFF",
-                text_color="#000000", fg_color="transparent",
-                font=("Lato", 16),
-                placeholder_text_color="#555555")
-    mb_chipset.grid(row=3, column=0, pady=(0, 12), sticky="w")
-
-    # Slots of RAM
-    lbl_slots = ctk.CTkLabel(mb_frame, text="Кількість слотів ОЗП", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_slots.grid(row=4, column=0, sticky="w", pady=(0, 4))
-
-    mb_slots = ctk.CTkComboBox(mb_frame, values=["2", "4", "8"],
-                    width=170, height=35, corner_radius=8,
-                    border_color="#00BFFF", button_color="#00BFFF",
-                    text_color="#000000", fg_color="#FFFFFF",
-                    font=("Lato", 16),
-                    dropdown_font=("Lato", 14))
-    mb_slots.grid(row=5, column=0, pady=(0, 12), sticky="w")
-
-    # Formfactor
-    lbl_form_factor = ctk.CTkLabel(mb_frame, text="Формфактор", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_form_factor.grid(row=6, column=0, sticky="w", pady=(0, 4))
-
-    mb_form_factor = ctk.CTkComboBox(mb_frame, values=["ATX", "Micro-ATX", "Mini-ITX"],
-                    width=170, height=35, corner_radius=8,
-                    border_color="#00BFFF", button_color="#00BFFF",
-                    text_color="#000000", fg_color="#FFFFFF",
-                    font=("Lato", 16),
-                    dropdown_font=("Lato", 14))
-    mb_form_factor.grid(row=7, column=0, pady=(0, 12), sticky="w")
-
-    # WIFI
-    lbl_wifi = ctk.CTkLabel(mb_frame, text="Підтримка Wi-Fi", text_color="#000000",
-                font=("Lato", 16, "bold"))
-    lbl_wifi.grid(row=8, column=0, sticky="w", pady=(0, 4))
-
-    mb_wifi = ctk.CTkComboBox(mb_frame, values=["Так", "Ні"],
-                    width=170, height=35, corner_radius=8,
-                    border_color="#00BFFF", button_color="#00BFFF",
-                    text_color="#000000", fg_color="#FFFFFF",
-                    font=("Lato", 16),
-                    dropdown_font=("Lato", 14))
-    mb_wifi.grid(row=9, column=0, pady=(0, 12), sticky="w")
-
-
-    def create_supply(category: str) -> None:
-        from message import message_window
-        cursor = None
-        try:
-            cursor = CONNECT.cursor()
-            
-            # Check required entry
-            if (not entry_name_product.get() or 
-                not entry_name_model.get() or 
-                not entry_count_delivery.get() or 
-                not entry_sum_delivery.get() or 
-                not entry_unit_price.get()):
-                message_window(app, "Помилка!", "Заповніть усі поля!")
-                return
-
-            # Start transaction
-            if not CONNECT.in_transaction:
-                CONNECT.start_transaction()
-            
-            if category == "Процесор":
-                clock_speed_cpu = f"{cpu_freq_from.get()}-{cpu_freq_to.get()}"
-                # Check required entry
-                if (not cpu_cores.get() or 
-                    not cpu_threads.get() or 
-                    not cpu_freq_from.get() or
-                    not cpu_freq_to.get() or
-                    not cpu_socket.get() or 
-                    not cpu_cache.get()):
-                    message_window(app, "Помилка!", "Заповніть характеристики")
-                    return
-                cursor.callproc('SupplyCPU', (
-                    global_state.current_employee_login,
-                    combobox_supplier.get(),
-                    category,
-                    combobox_vendor.get(),
-                    entry_name_product.get(),
-                    entry_name_model.get(),
-                    int(entry_count_delivery.get()),
-                    float(entry_sum_delivery.get()),
-                    float(entry_unit_price.get()),
-                    cpu_cores.get(),
-                    cpu_threads.get(),
-                    clock_speed_cpu,
-                    cpu_socket.get(),
-                    cpu_cache.get()
-                ))
-                
-            elif category == "Відеокарта":
-                # Check required entry
-                if (not gpu_vram_entry.get() or 
-                    not gpu_freq_entry.get() or 
-                    not gpu_tech_entry.get() or 
-                    not gpu_int_entry.get() or 
-                    not gpu_tdp_entry.get()):
-                    message_window(app, "Помилка!", "Заповніть характеристики!")
-                    return
-
-                cursor.callproc('SupplyGPU', (
-                    global_state.current_employee_login,
-                    combobox_supplier.get(),
-                    category,
-                    combobox_vendor.get(),
-                    entry_name_product.get(),
-                    entry_name_model.get(),
-                    int(entry_count_delivery.get()),
-                    float(entry_sum_delivery.get()),
-                    float(entry_unit_price.get()),
-                    gpu_vram_entry.get(),
-                    gpu_freq_entry.get(),
-                    gpu_tech_entry.get(),
-                    gpu_int_entry.get(),
-                    gpu_tdp_entry.get()
-                ))
-                
-            elif category == "Материнська плата":
-                # Check required entry
-                if (not mb_socket.get() or 
-                    not mb_chipset.get() or 
-                    not mb_slots.get() or 
-                    not mb_form_factor.get() or 
-                    not mb_wifi.get()):
-                    message_window(app, "Помилка!", "Заповніть характеристики!")
-                    return
-                cursor.callproc('SupplyMotherboard', (
-                    global_state.current_employee_login,
-                    combobox_supplier.get(),
-                    category,
-                    combobox_vendor.get(),
-                    entry_name_product.get(),
-                    entry_name_model.get(),
-                    int(entry_count_delivery.get()),
-                    float(entry_sum_delivery.get()),
-                    float(entry_unit_price.get()),
-                    mb_socket.get(),
-                    mb_chipset.get(),
-                    mb_slots.get(),
-                    mb_form_factor.get(),
-                    mb_wifi.get()
-                ))
-            else:
-                return
-            
-            # Commit transaction
-            CONNECT.commit()
-            print(f"Товар '{entry_name_product.get()}' успішно додано!")
-            message_window(app, "Успіх!", f"Товар {entry_name_product.get()} успішно додано!")
-            
-            # Очистка полів після успішного додавання
-            entry_name_product.delete(0, 'end')
-            entry_name_model.delete(0, 'end')
-            entry_count_delivery.delete(0, 'end')
-            entry_sum_delivery.delete(0, 'end')
-            entry_unit_price.delete(0, 'end')
-            
-        except Exception as e:
-            # Rollback
-            try:
-                CONNECT.rollback()
-            except:
-                pass
-            print(f"Помилка при додаванні товару: {e}")
-            
-        finally:
-            # Close cursor
-            if cursor:
-                try:
-                    cursor.close()
-                except:
-                    pass
-
-
-    
-    # Button for add prod to DB
-    frame_button_add = ctk.CTkFrame(master=frame_supply,fg_color="transparent",border_width=1)
-    frame_button_add.place(
-    relx=0.5,
-    rely=1.0,
-    anchor="s",   
-    y=-20)
-
-    button_add = ctk.CTkButton(master=frame_button_add,        
-        text="ДОДАТИ ТОВАР У БД",
+    # Entry: ID
+    entry_id = ctk.CTkEntry(
+        master=frame_controls_add, 
+        placeholder_text="Номер товару", 
         width=230, 
         height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width= 2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000"
+    )
+    entry_id.pack(side="left", padx=(5, 10))
+
+    # Entry: Quantity
+    entry_quantity = ctk.CTkEntry(
+        master=frame_controls_add, 
+        placeholder_text="Кількість", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width= 2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_quantity.pack(side="left", padx=(0, 10))
+
+    # Button: Add to Cart
+    button_add = ctk.CTkButton(
+        master=frame_controls_add,
+        text="Додати",
+        width=230,
+        height=68,
         corner_radius=5,
-        fg_color="#FFB030",
+        fg_color="#00BFFF",
+        hover_color="#009BCF",
+        font=("Lato", 24, "bold"),
+        text_color="#FFFFFF",
+        command=lambda:on_add_click()
+    )
+    button_add.pack(side="left")
+
+    # Button who clear basket
+    button_clear_basket = ctk.CTkButton(
+        master=frame_controls_add,
+        text="Очистити кошик",
+        width=193,
+        height=39,
+        corner_radius=5,
+        fg_color="#FF3C00",
+        hover_color="#E32600",
+        font=("Lato", 16, "bold"),
+        text_color="#FFFFFF",
+        command=lambda:on_clear_click()
+    )
+    button_clear_basket.pack(side="right")
+
+
+    # ------------------ 3. ТАБЛИЦЯ КОШИКА (Нижня таблиця) ------------------
+    frame_cart = ctk.CTkFrame(master=frame_right_container, fg_color="transparent", border_width=1, height=200)
+    frame_cart.pack(side="top", fill="x", expand=False, padx=5, pady=(0, 5))
+    
+    frame_cart.grid_columnconfigure(0, weight=1)
+    frame_cart.grid_rowconfigure(0, weight=1)
+
+    # Columns for the cart
+    cart_columns = ("id", "name", "model", "quantity", "price", "total")
+    cart_titles = ["№", "Назва", "Модель", "Кількість", "Ціна", "Сума"]
+    # Table for cart 
+    tree_cart = ttk.Treeview(master=frame_cart, columns=cart_columns, show="headings", height=6)
+    
+    for col, title in zip(cart_columns, cart_titles):
+        tree_cart.heading(col, text=title)
+
+    tree_cart.grid(row=0, column=0, sticky="nsew", padx=(5, 0), pady=(5, 5))
+
+    # Scrollbar for cart
+    scrollbar_cart_y = ctk.CTkScrollbar(frame_cart, orientation="vertical", command=tree_cart.yview)
+    scrollbar_cart_y.grid(row=0, column=1, sticky="ns", padx=(0, 5), pady=(5, 5))
+    
+    tree_cart.configure(yscrollcommand=scrollbar_cart_y.set)
+
+    # Width for cart table
+    tree_cart.column("id", width=50, anchor="center")
+    tree_cart.column("name", width=400)
+    tree_cart.column("model", width=200)
+    tree_cart.column("quantity", width=100, anchor="center")
+    tree_cart.column("price", width=150, anchor="e")
+    tree_cart.column("total", width=150, anchor="e")
+
+      
+    # ------------------ 4. ПАНЕЛЬ ОФОРМЛЕННЯ (Під кошиком) ------------------
+    frame_controls_checkout = ctk.CTkFrame(master=frame_right_container, height=68, fg_color="transparent")
+    frame_controls_checkout.pack(side="top", fill="x", padx=5, pady=(0, 20))
+
+    # Frame for checkbox
+    frame_check_box_sale = ctk.CTkFrame(
+        master=frame_controls_checkout,
+        width=160,
+        height=68,
+        fg_color="transparent"
+    )
+    frame_check_box_sale.pack(side="left", fill="y", padx=(0, 10))
+
+    # Checkbox for register or authorize client
+    checkbox_auth = ctk.CTkCheckBox(
+        master=frame_check_box_sale,
+        text="Реєстрація/Авторизація клієнта",
+        text_color="#000000",
+        text_color_disabled="#E90000",
+        font=("Lato", 16),
+        fg_color="#00BFFF",    
+        border_color="#00BFFF",
+        border_width=3,
+        corner_radius=5,
+        hover_color="#0080C0",
+        command=lambda:show_entries(checkbox_auth.get(),frame_entries_container)
+    )
+    checkbox_auth.pack(expand=True, anchor="center") 
+
+    # Frame for button checkout
+    frame_button_container = ctk.CTkFrame(
+        master=frame_controls_checkout,
+        height=68,
+        fg_color="transparent"
+    )
+    frame_button_container.pack(side="right", fill="y", padx=(10, 0))
+
+    button_checkout = ctk.CTkButton(
+        master=frame_button_container,
+        text="Завершити замовлення",
+        width=230,
+        height=68,
+        corner_radius=5,
+        fg_color="#34D399",
         hover_color="#2ECC71",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
-        command=lambda: create_supply(combobox_category.get())
+        command=lambda:on_sale_click()
     )
-    button_add.pack(fill="both")
+    button_checkout.pack(expand=True, anchor="center")
+
+
+    # Central frame
+    frame_entries_container = ctk.CTkFrame(
+        master=frame_controls_checkout,
+        height=68,
+        fg_color="transparent"
+    )
+    frame_entries_container.pack(side="left", fill="both", expand=True)
+    frame_entries_container.pack_forget()
+    
+    frame_entries_inner = ctk.CTkFrame(master=frame_entries_container, fg_color="transparent")
+    frame_entries_inner.pack(expand=True, fill="y")
+
+    # Entry 1: Client Name
+    entry_client_name = ctk.CTkEntry(
+        master=frame_entries_inner, 
+        placeholder_text="ПІБ Клієнта", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width=2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_name.pack(side="left", padx=5)
+
+    # Entry 2: Phone
+    entry_client_phone = ctk.CTkEntry(
+        master=frame_entries_inner, 
+        placeholder_text="Номер телефону", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width=2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_phone.pack(side="left", padx=5)
+
+    # Entry 3: Additional (Address/Email)
+    entry_client_info = ctk.CTkEntry(
+        master=frame_entries_inner, 
+        placeholder_text="Email", 
+        width=230, 
+        height=68,
+        fg_color="transparent",
+        border_color="#00BFFF",
+        border_width=2,
+        corner_radius=10,
+        font=("Lato", 16),
+        placeholder_text_color="#7F7F7F",
+        text_color="#000000",
+    )
+    entry_client_info.pack(side="left", padx=5)
+        
+
+    # Frame for sum
+    frame_sum = ctk.CTkFrame(master=frame_controls_add,width=160,height=45,fg_color="transparent")
+    frame_sum.pack(expand=True)
+    # Variable for save total sum
+    sum_var = ctk.StringVar(value="Загальна сума: 0 ₴")
+    # Entry for summary
+    label_summary = ctk.CTkLabel(master=frame_sum,textvariable=sum_var,text_color="#000000",font=("Lato", 16, "bold"))
+    label_summary.pack(expand=True)
+
+
+    def on_add_click() -> None:
+        add_data_to_card(app, entry_id, entry_quantity, tree_cart)
+        total = get_summary_from_basket(tree_cart)
+        sum_var.set(f"Загальна сума: {total} ₴")
+
+
+    def on_clear_click() -> None:
+        clear_basket(tree_cart)
+        sum_var.set("Загальна сума: 0 ₴")
+
+
+    def on_sale_click() -> None:
+        total = get_summary_from_basket(tree_cart)
+        try: 
+            make_sale(app, checkbox_auth.get(), entry_client_name, entry_client_info, entry_client_phone, tree_cart, tree_table)
+            sum_var.set("Загальна сума: 0 ₴")
+        except Exception as e:
+            print(f"Продаж скасовано: {e}")
+            sum_var.set(f"Загальна сума: {total} ₴")        
+            
+    
+    try:
+        # Query for data in table
+        cursor_tab = CONNECT.cursor(buffered=True)
+        cursor_tab.execute(QUERY_SUPPLY) # exucutes an SQL query
+        all_products = cursor_tab.fetchall() # converts the response into a list of tuples
+        cursor_tab.close()
+        CONNECT.commit()
+        # clean our list
+        current_products.clear()
+
+        # Add data in table by row
+        for row in all_products:
+            tree_table.insert("", "end", values=row)
+            # DEFAULT value for current_products
+            current_products.append(row)
+    except:
+        print("We have a problem with get data about product in Purchase Frame")
 
 
 
-    combobox_category.configure(command=lambda x:update_category_fields(combobox_category.get(),cpu_frame, gpu_frame, mb_frame))
- 
 if __name__ == "__main__":
     APP = ctk.CTk()
-    Supply_window(app = APP)
+    Supply_window(app=APP)
     APP.mainloop()
