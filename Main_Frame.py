@@ -677,12 +677,12 @@ def update_left_panel(comb_category,category, left_frame, tree, all_products):
         # Очищаємо таблицю і заповнюємо всіма продуктами
         tree.delete(*tree.get_children())
         for row in all_products:
-            tree.insert("", "end", values=row)
+            if row[4] == category:
+                tree.insert("", "end", values=row)
             
         # Перебудовуємо панель (рекурсивний виклик, щоб очистити поля вводу)
         update_left_panel(comb_category,category, left_frame, tree, all_products)
-        comb_category.set("Усі")
-        
+
 
     # 3. Будуємо нові панелі, передаючи функцію reset_all
     if category == "Процесор":

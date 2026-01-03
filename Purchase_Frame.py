@@ -434,7 +434,7 @@ def build_mb_sidebar(parent_frame, tree, all_products, reset_command):
 
     # --- FORM FACTOR ---
     ctk.CTkLabel(main_scroll, text="Формфактор", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
-    ff_list = ["ATX", "mATX", "E-ATX"]
+    ff_list = ["ATX", "Micro-ATX", "E-ATX"]
     widgets['ff'] = {}
     for ff in ff_list:
         chk = ctk.CTkCheckBox(main_scroll, text=ff, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
@@ -675,11 +675,11 @@ def update_left_panel(comb_category,category, left_frame, tree, all_products):
         # Очищаємо таблицю і заповнюємо всіма продуктами
         tree.delete(*tree.get_children())
         for row in all_products:
-            tree.insert("", "end", values=row)
+            if row[4] == category:
+                tree.insert("", "end", values=row)
             
         # Перебудовуємо панель (рекурсивний виклик, щоб очистити поля вводу)
         update_left_panel(comb_category,category, left_frame, tree, all_products)
-        comb_category.set("Усі")
 
     # 3. Будуємо нові панелі, передаючи функцію reset_all
     if category == "Процесор":
