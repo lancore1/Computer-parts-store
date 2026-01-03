@@ -40,12 +40,6 @@ def validate_login_and_password(APP,login:str,password:str) -> None:
 
 
 def Authorize_window(app) -> None:
-    # app = ctk.CTk()    
-    # app.geometry("1280x800")
-    # app.title("Авторизація")
-    # app.configure(fg_color="#00BFFF")
-    # # open app in full screen
-    # app.after(50, lambda: app.state("zoomed"))
 
     #Frame Container 
     frame_container = ctk.CTkFrame(master=app,

@@ -793,8 +793,18 @@ def add_data_to_card(APP,entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, t
 
     try:
         # converts product_id,quantity because ctk.CTkEntry.get() return "str" not number
-        product_id = int(product_id)
-        quantity = int(quantity)
+        try:
+            product_id = int(product_id)
+            quantity = int(quantity)
+
+            if quantity < 0:
+                message_window(APP, "Помилка!", "Некоректні дані")
+                return
+        except:
+            message_window(APP, "Помилка!", "Некоректні дані")
+            return
+
+        
 
         product_data = None
         for item in current_products:

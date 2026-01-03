@@ -714,9 +714,16 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
         if not product_id or not quantity:
             message_window(APP, "Помилка!", "Заповніть  усі необхідні поля!")
             return
+        try:
+            product_id = int(product_id)
+            quantity = int(quantity)
+        except:
+            message_window(APP, "Помилка!", "Некоректні дані")
+            return
         
-        product_id = int(product_id)
-        quantity = int(quantity)
+        if quantity < 0:
+            message_window(APP, "Помилка!", "Некоректні дані")
+            return
 
         product_data = None
         for item in current_products:
@@ -751,7 +758,14 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
                     if not price_prod:
                         message_window(APP, "Помилка!", "Введіть ціну постачі!")
                         return
-                    price_prod = float(price_prod)
+                    try:
+                        price_prod = float(price_prod)
+                        if price_prod < 0:
+                            message_window(APP, "Помилка!", "Некоректні дані")
+                            return
+                    except ValueError:
+                        message_window(APP, "Помилка!", "Некоректні дані")
+                        return
                     new_quantity = int(row[4]) + quantity
                     new_row = [row[0], row[1], row[2], supplier, new_quantity, f"{price_prod:.2f}",f"{price_prod * new_quantity:.2f}"]
                     table.delete(iid)
@@ -764,7 +778,15 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
                 if not price_prod:
                         message_window(APP, "Помилка!", "Введіть ціну постачі!")
                         return
-                price_prod = float(price_prod)         
+                try:
+                    price_prod = float(price_prod)
+                    if price_prod < 0:
+                        message_window(APP, "Помилка!", "Некоректні дані")
+                        return
+                except ValueError:
+                    message_window(APP, "Помилка!", "Некоректні дані")
+                    return
+
                 new_row = [item[0],item[1],item[2],supplier,quantity,f"{price_prod:.2f}",f"{price_prod * quantity:.2f}"]
                 table.insert("", "end", values=new_row)
                 return
