@@ -794,6 +794,7 @@ def make_supply(APP,
 
     if not basket:
         message_window(APP,"Помилка!","Кошик порожній, додайте товар!")
+        raise Exception("Basket is empty")
     grouped_basket = defaultdict(list)
     for item in basket:
         supplier_name = str(item[3])
