@@ -182,7 +182,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
     label_text = ctk.CTkLabel(master=frame_label,
         width=506,
         height=100,
-        text="ПОСТАЧАННЯ НОВОГО ТОВАРУ",
+        text="СТВОРЕННЯ НОВОГО ТОВАРУ",
         text_color="#000000",
         font=("Lato", 32, "bold")
     )
@@ -198,38 +198,9 @@ def Create_product_window(*, app: ctk.CTk) -> None:
     frame_for_non_adaptive_element.pack(side="left", anchor="nw", padx=(100,50))
 
 
-    #Frame for combobox from supplier
-    frame_supplier = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_supplier.grid(row=0, column=0, pady=(5, 10), sticky="w")
-
-    label_supplier = ctk.CTkLabel(
-        master=frame_supplier,
-        text="ПОСТАЧАЛЬНИК",
-        text_color="#000000",
-        font=("Lato", 20, "bold")
-    )
-    label_supplier.grid(row=0,column=0)
-
-    combobox_supplier = ctk.CTkComboBox(
-        master=frame_supplier,
-        width=153, 
-        height=25, 
-        corner_radius=5,
-        text_color="#000000", font=("Lato", 16, "bold"),
-        fg_color="#FFFFFF", button_color="#00BFFF",
-        border_color="#00BFFF",
-        dropdown_fg_color="#FFFFFF",
-        dropdown_text_color="#000000",
-        dropdown_font=("Lato", 14),
-        dropdown_hover_color="#E5E5E5",
-        values=get_supplier_list()
-    )
-    combobox_supplier.grid(row=1,column=0)
-
-
     #Frame for combobox from category
     frame_type_category = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_type_category.grid(row=0, column=1)
+    frame_type_category.grid(row=0, column=0,sticky="w")
 
     label_category = ctk.CTkLabel(
         master=frame_type_category,
@@ -258,7 +229,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
 
     #Frame for combobox from vendor
     frame_vendor = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_vendor.grid(row=2, column=0, padx=7,pady=(5, 10), sticky="w")
+    frame_vendor.grid(row=2, column=0, padx=0,pady=(5, 10), sticky="w")
 
     label_vendor = ctk.CTkLabel(
         master=frame_vendor,
@@ -320,65 +291,10 @@ def Create_product_window(*, app: ctk.CTk) -> None:
     )
     entry_name_model.pack(side="left")
 
-    #Frame for count of product delivery
-    frame_product_quantity= ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_product_quantity.grid(row=5, column=0, pady=(0, 10), sticky="w")
-
-    entry_count_delivery = ctk.CTkEntry(
-        master=frame_product_quantity,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Кількість постачі, шт",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_count_delivery.pack(side="left")
-
-    #Frame for delivery sum
-    frame_delivery_sum= ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_delivery_sum.grid(row=6, column=0, pady=(0, 10), sticky="w")
-
-    entry_sum_delivery = ctk.CTkEntry(
-        master=frame_delivery_sum,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Загальна сумма постачі, грн",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_sum_delivery.pack(side="left")
-
-    #Frame for unit price
-    frame_unit_price= ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
-    frame_unit_price.grid(row=7, column=0, pady=(0, 10), sticky="w")
-
-    entry_unit_price = ctk.CTkEntry(
-        master=frame_unit_price,
-        width=275, 
-        height=50, 
-        corner_radius=10,
-        fg_color="transparent",
-        border_width=2, border_color="#00BFFF",
-        placeholder_text="Ціна за одиницю, грн",
-        placeholder_text_color="#000000",
-        text_color="#000000",
-        font=("Lato", 16)
-    )
-    entry_unit_price.pack(side="left")
-
-
     # --- RIGHT SIDE: ADAPTIVE FRAME ---
     
     frame_for_adaptive_element = ctk.CTkFrame(master=frame_supply, width=500, height=700, fg_color="transparent")
-    frame_for_adaptive_element.pack(side="left", anchor="nw", padx=200, pady=0)
+    frame_for_adaptive_element.pack(side="left", anchor="nw", padx=350, pady=0)
     frame_for_adaptive_element.pack_propagate(False)
     
     # Header Label for Adaptive Frame
@@ -402,7 +318,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
                 font=("Lato", 16, "bold"))
     lbl_cores.grid(row=0, column=0, sticky="w", pady=(0, 4))
 
-    cpu_cores = ctk.CTkComboBox(cpu_frame, values=["2", "4", "6", "8", "12", "16"],
+    cpu_cores = ctk.CTkComboBox(cpu_frame, values=["2", "4", "6", "8", "12", "16","20","24","32"],
                                 width=170, height=35, corner_radius=8,
                                 border_color="#00BFFF", button_color="#00BFFF",
                                 text_color="#000000", fg_color="#FFFFFF",
@@ -414,7 +330,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
                 font=("Lato", 16, "bold"))
     lbl_threads.grid(row=2, column=0, sticky="w", pady=(0, 4))
 
-    cpu_threads = ctk.CTkComboBox(cpu_frame, values=["4", "8", "12", "16", "24", "32"],
+    cpu_threads = ctk.CTkComboBox(cpu_frame, values=["4", "8","10","12", "16", "24", "32"],
                                 width=170, height=35, corner_radius=8,
                                 border_color="#00BFFF", button_color="#00BFFF",
                                 text_color="#000000", fg_color="#FFFFFF",
@@ -472,11 +388,13 @@ def Create_product_window(*, app: ctk.CTk) -> None:
     lbl_vram = ctk.CTkLabel(gpu_frame, text="Обсяг відеопам’яті", text_color="#000000", 
                 font=("Lato", 16, "bold"))
     lbl_vram.grid(row=0, column=0, sticky="w", pady=4, padx=(0, 20))
-    gpu_vram_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 8 GB", 
-                                width=275, height=35, corner_radius=10, border_width=2, 
-                                border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
-                                font=("Lato", 16), placeholder_text_color="#555555")
-    gpu_vram_entry.grid(row=1, column=0, pady=4)
+    gpu_vram_entry = ctk.CTkComboBox(gpu_frame, values=["2", "4", "6","8","10","12","16","24","32"],
+                    width=170, height=35, corner_radius=8,
+                    border_color="#00BFFF", button_color="#00BFFF",
+                    text_color="#000000", fg_color="#FFFFFF",
+                    font=("Lato", 16),
+                    dropdown_font=("Lato", 14))
+    gpu_vram_entry.grid(row=1, column=0, pady=4,sticky="w")
 
     # GPU speed
     lbl_gpu_freq = ctk.CTkLabel(gpu_frame, text="Частота GPU", text_color="#000000", 
@@ -566,7 +484,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
                 font=("Lato", 16, "bold"))
     lbl_form_factor.grid(row=6, column=0, sticky="w", pady=(0, 4))
 
-    mb_form_factor = ctk.CTkComboBox(mb_frame, values=["ATX", "Micro-ATX", "Mini-ITX"],
+    mb_form_factor = ctk.CTkComboBox(mb_frame, values=["ATX", "Micro-ATX", "Mini-ITX","E-ATX"],
                     width=170, height=35, corner_radius=8,
                     border_color="#00BFFF", button_color="#00BFFF",
                     text_color="#000000", fg_color="#FFFFFF",
@@ -595,11 +513,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
             cursor = CONNECT.cursor()
             
             # Check required entry
-            if (not entry_name_product.get() or 
-                not entry_name_model.get() or 
-                not entry_count_delivery.get() or 
-                not entry_sum_delivery.get() or 
-                not entry_unit_price.get()):
+            if (not entry_name_product.get() or not entry_name_model.get()):
                 message_window(app, "Помилка!", "Заповніть усі поля!")
                 return
 
@@ -607,6 +521,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
             if not CONNECT.in_transaction:
                 CONNECT.start_transaction()
             
+
             if category == "Процесор":
                 clock_speed_cpu = f"{cpu_freq_from.get()}-{cpu_freq_to.get()}"
                 # Check required entry
@@ -618,16 +533,12 @@ def Create_product_window(*, app: ctk.CTk) -> None:
                     not cpu_cache.get()):
                     message_window(app, "Помилка!", "Заповніть характеристики")
                     return
-                cursor.callproc('SupplyCPU', (
+                cursor.callproc('CreateCPU', (
                     global_state.current_employee_login,
-                    combobox_supplier.get(),
                     category,
                     combobox_vendor.get(),
                     entry_name_product.get(),
                     entry_name_model.get(),
-                    int(entry_count_delivery.get()),
-                    float(entry_sum_delivery.get()),
-                    float(entry_unit_price.get()),
                     cpu_cores.get(),
                     cpu_threads.get(),
                     clock_speed_cpu,
@@ -645,16 +556,12 @@ def Create_product_window(*, app: ctk.CTk) -> None:
                     message_window(app, "Помилка!", "Заповніть характеристики!")
                     return
 
-                cursor.callproc('SupplyGPU', (
+                cursor.callproc('CreateGPU', (
                     global_state.current_employee_login,
-                    combobox_supplier.get(),
                     category,
                     combobox_vendor.get(),
                     entry_name_product.get(),
                     entry_name_model.get(),
-                    int(entry_count_delivery.get()),
-                    float(entry_sum_delivery.get()),
-                    float(entry_unit_price.get()),
                     gpu_vram_entry.get(),
                     gpu_freq_entry.get(),
                     gpu_tech_entry.get(),
@@ -671,16 +578,12 @@ def Create_product_window(*, app: ctk.CTk) -> None:
                     not mb_wifi.get()):
                     message_window(app, "Помилка!", "Заповніть характеристики!")
                     return
-                cursor.callproc('SupplyMotherboard', (
+                cursor.callproc('CreateMotherboard', (
                     global_state.current_employee_login,
-                    combobox_supplier.get(),
                     category,
                     combobox_vendor.get(),
                     entry_name_product.get(),
                     entry_name_model.get(),
-                    int(entry_count_delivery.get()),
-                    float(entry_sum_delivery.get()),
-                    float(entry_unit_price.get()),
                     mb_socket.get(),
                     mb_chipset.get(),
                     mb_slots.get(),
@@ -698,9 +601,6 @@ def Create_product_window(*, app: ctk.CTk) -> None:
             # Очистка полів після успішного додавання
             entry_name_product.delete(0, 'end')
             entry_name_model.delete(0, 'end')
-            entry_count_delivery.delete(0, 'end')
-            entry_sum_delivery.delete(0, 'end')
-            entry_unit_price.delete(0, 'end')
             
         except Exception as e:
             # Rollback
@@ -709,6 +609,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
             except:
                 pass
             print(f"Помилка при додаванні товару: {e}")
+            message_window(app, "Помилка!", f"Такий товар вже існує!")
             
         finally:
             # Close cursor
@@ -734,7 +635,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
         height=68,
         corner_radius=5,
         fg_color="#FFB030",
-        hover_color="#2ECC71",
+        hover_color="#FF9933",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
         command=lambda: create_product(combobox_category.get())
@@ -747,5 +648,6 @@ def Create_product_window(*, app: ctk.CTk) -> None:
  
 if __name__ == "__main__":
     APP = ctk.CTk()
-    Supply_window(app = APP)
+    Create_product_window(app=APP)
     APP.mainloop()
+

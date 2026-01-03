@@ -436,7 +436,7 @@ def build_mb_sidebar(parent_frame, tree, all_products, reset_command):
 
     # --- FORM FACTOR ---
     ctk.CTkLabel(main_scroll, text="Формфактор", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
-    ff_list = ["ATX", "mATX", "E-ATX"]
+    ff_list = ["ATX", "Micro-ATX", "E-ATX"]
     widgets['ff'] = {}
     for ff in ff_list:
         chk = ctk.CTkCheckBox(main_scroll, text=ff, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
@@ -790,6 +790,16 @@ def open_purchase(APP) -> None:
         print("We have a problem with rework window")
     
 def open_supply(APP) -> None:
+    from Supply_Frame import Supply_window
+    try:
+        for widget in APP.winfo_children():
+            widget.destroy()
+        Supply_window(app=APP)
+    except:
+        print("We have a problem with rework window")
+
+
+def open_create_prod(APP) -> None:
     from CreateProduct_Frame import Create_product_window
     try:
         for widget in APP.winfo_children():
@@ -798,7 +808,7 @@ def open_supply(APP) -> None:
     except:
         print("We have a problem with rework window")
 
-    
+
 def Main_window(*, app: ctk.CTk) -> None:
     global current_products
 
@@ -996,7 +1006,8 @@ def Main_window(*, app: ctk.CTk) -> None:
         hover_color="#E32600",
         font=("Lato", 14, "bold"),
         image=ctk.CTkImage(light_image=Image.open("images/add_prod.png"), size=(20, 20)),
-        compound="right"
+        compound="right",
+        command=lambda: open_create_prod(APP=app)
     )
     button_create_prod.pack()
 

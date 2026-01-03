@@ -863,6 +863,9 @@ def clear_basket(table:ttk.Treeview) -> None:
     # clear table 
     table.delete(*table.get_children())
 
+def valid_phone(phone):
+    import re
+    return re.fullmatch(r"(\+38)?0\d{9}", phone)
 
 # Function who make sale about 
 def make_sale(APP,state:ctk.CTkCheckBox,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEntry, cl_phone:ctk.CTkEntry, 
@@ -883,6 +886,12 @@ def make_sale(APP,state:ctk.CTkCheckBox,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEn
     if state == 1 and (not name or not email or not phone):
         message_window(APP,"Помилка!","Введіть усі необхідні поля!")
         raise Exception("Missing client data")
+    
+    if not valid_phone(phone):
+        message_window(APP,"Помилка!","Номер телефону введено не коректно!")
+        raise Exception("Not right input phone fromat")
+
+    
     
     try:
         cursor_tab = CONNECT.cursor()
@@ -925,6 +934,7 @@ def make_sale(APP,state:ctk.CTkCheckBox,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEn
         message_window(APP,"Успіх!",f"Продаж успішно завершено! Номер чеку:{check_id}")
     except Exception as e:
         CONNECT.rollback()
+        
         print(f"Помилка: {e}")
         return
     
