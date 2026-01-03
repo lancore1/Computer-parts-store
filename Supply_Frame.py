@@ -9,12 +9,638 @@ from globalQuery import QUERY_SUPPLIER, QUERY_SUPPLY
 
 current_products = []  # stores current table data for filtering
 
+import re
+
+# --- НОВІ ФУНКЦІЇ ДЛЯ СОРТУВАННЯ ТА ЛІВОЇ ПАНЕЛІ ---
+def add_clear_button(parent_frame, command):
+    btn = ctk.CTkButton(parent_frame, text="Очистити фільтри", 
+                        fg_color="#FF3333", hover_color="#CC0000", text_color="white",
+                        font=("Lato", 16, "bold"), height=40,
+                        command=command) # Викликаємо функцію перезавантаження
+    btn.pack(side="bottom", pady=(10, 20), fill="x", padx=20)
+
+def parse_cpu_specs(spec_str):
+    try:
+        parts = spec_str.split(" / ")
+        # 0: "16 ядер" -> 16
+        cores = int(re.search(r'\d+', parts[0]).group())
+        # 1: "24 потоків" -> 24
+        threads = int(re.search(r'\d+', parts[1]).group())
+        # 2: "3.4-5.4 Ггц" -> 5.4 (беремо макс частоту для спрощення фільтрації)
+        freq_match = re.findall(r'\d+\.\d+', parts[2])
+        max_freq = float(freq_match[-1]) if freq_match else 0.0
+        # 3: "LGA1700"
+        socket = parts[3].strip()
+        # 4: "30 Мб" -> 30
+        cache = int(re.search(r'\d+', parts[4]).group())
+        
+        return {
+            "cores": cores,
+            "threads": threads,
+            "freq": max_freq,
+            "socket": socket,
+            "cache": cache
+        }
+    except Exception as e:
+        print(f"Error parsing specs '{spec_str}': {e}")
+        return None
+
+def apply_advanced_cpu_filter(widgets, tree, all_products):
+    global current_products
+    
+    # 1. Зчитуємо значення з віджетів
+    try:        
+        # Виробник (Vendor) - Checkboxes
+        selected_vendors = []
+        if widgets['vendor_amd'].get(): selected_vendors.append("AMD")
+        if widgets['vendor_intel'].get(): selected_vendors.append("Intel")
+        
+        # Характеристики CPU
+        sel_cores = widgets['cores'].get() # Combobox value or empty
+        print(sel_cores)
+        sel_threads = widgets['threads'].get()
+        
+        freq_min = float(widgets['freq_from'].get()) if widgets['freq_from'].get() else 0.0
+        freq_max = float(widgets['freq_to'].get()) if widgets['freq_to'].get() else 10.0
+        
+        cache_min = float(widgets['cache_from'].get()) if widgets['cache_from'].get() else 0
+        cache_max = float(widgets['cache_to'].get()) if widgets['cache_to'].get() else 1000
+        
+        # Сокети
+        selected_sockets = []
+        for sock_name, var in widgets['sockets'].items():
+            if var.get(): selected_sockets.append(sock_name)
+
+    except ValueError:
+        # Якщо введено текст замість цифр, ігноруємо фільтрацію або чекаємо виправлення
+        return
+
+    filtered_list = []
+    
+    # 2. Проходимо по всіх товарах і фільтруємо
+    for row in all_products:
+        # row[4] = Category, row[5] = Vendor, row[8] = Cost, row[3] = Specs
+        category = row[4]
+        vendor = row[5]
+        specs_str = row[3]
+
+        # Базовий фільтр: Категорія має бути Процесор
+        if category != "Процесор":
+            continue
+            
+        # Фільтр виробника
+        if selected_vendors and (vendor not in selected_vendors):
+            continue
+            
+        # Розширений парсинг характеристик
+        specs = parse_cpu_specs(specs_str)
+        if not specs:
+            continue
+            
+        # Фільтр ядер (якщо обрано конкретне значення)
+        if sel_cores and str(specs['cores']) != sel_cores:
+            continue
+            
+        # Фільтр потоків
+        if sel_threads and str(specs['threads']) != sel_threads:
+            continue
+            
+        # Фільтр частоти (попадання в діапазон)
+        if not (freq_min <= specs['freq'] <= freq_max):
+            continue
+            
+        # Фільтр кешу
+        if not (cache_min <= specs['cache'] <= cache_max):
+            continue
+            
+        # Фільтр сокету
+        if selected_sockets and (specs['socket'] not in selected_sockets):
+            continue
+            
+        filtered_list.append(row)
+
+    # 3. Оновлюємо таблицю
+    current_products = filtered_list.copy()
+    tree.delete(*tree.get_children())
+    for item in current_products:
+        tree.insert("", "end", values=item)
+
+
+def build_cpu_sidebar(parent_frame, tree, all_products, reset_command):
+    widgets = {}
+    
+    def on_change(*args):
+        apply_advanced_cpu_filter(widgets, tree, all_products)
+
+    # --- СТВОРЮЄМО ГОЛОВНИЙ СКРОЛ-ФРЕЙМ ---
+    # Це дозволить усьому контенту всередині parent_frame гортатися
+    main_scroll = ctk.CTkScrollableFrame(
+        parent_frame, 
+        fg_color="transparent",
+        scrollbar_button_color="#4A4A4A",
+        scrollbar_button_hover_color="#666666"
+    )
+    main_scroll.pack(fill="both", expand=True)
+
+    # --- ВИРОБНИК ---
+    ctk.CTkLabel(main_scroll, text="Виробник", font=("Lato", 20, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    widgets['vendor_amd'] = ctk.CTkCheckBox(main_scroll, text="AMD", font=("Lato", 16), 
+                                             text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+    widgets['vendor_amd'].pack(anchor="w", padx=30, pady=2)
+    widgets['vendor_intel'] = ctk.CTkCheckBox(main_scroll, text="Intel", font=("Lato", 16), 
+                                               text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+    widgets['vendor_intel'].pack(anchor="w", padx=30, pady=2)
+
+    # --- ХАРАКТЕРИСТИКИ ---
+    ctk.CTkLabel(main_scroll, text="Характеристики", font=("Lato", 24, "bold"), text_color="#FFFFFF").pack(pady=(20, 10))
+
+    # Кількість ядер
+    ctk.CTkLabel(main_scroll, text="Кількість ядер", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20)
+    widgets['cores'] = ctk.CTkComboBox(main_scroll, values=["", "2", "4", "6", "8", "12", "16", "24"], width=180, 
+                                        fg_color="#FFFFFF", text_color="#000000", dropdown_fg_color="#FFFFFF", dropdown_text_color="#000000", 
+                                        button_color="#FFFFFF", button_hover_color="#E0E0E0", border_width=0, command=on_change)
+    widgets['cores'].pack(pady=(0, 10))
+    widgets['cores'].set("") 
+
+    # Кількість потоків
+    ctk.CTkLabel(main_scroll, text="Кількість потоків", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20)
+    widgets['threads'] = ctk.CTkComboBox(main_scroll, values=["", "4", "8", "12", "16", "24", "32"], width=180, 
+                                          fg_color="#FFFFFF", text_color="#000000", dropdown_fg_color="#FFFFFF", dropdown_text_color="#000000", 
+                                          button_color="#FFFFFF", button_hover_color="#E0E0E0", border_width=0, command=on_change)
+    widgets['threads'].pack(pady=(0, 10))
+    widgets['threads'].set("")
+
+    # Тактова частота
+    ctk.CTkLabel(main_scroll, text="Тактова частота (GHz)", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20)
+    f_freq = ctk.CTkFrame(main_scroll, fg_color="transparent")
+    f_freq.pack(pady=(0, 10))
+    
+    widgets['freq_from'] = ctk.CTkEntry(f_freq, width=80, placeholder_text="Від", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['freq_from'].pack(side="left", padx=5)
+    widgets['freq_from'].bind("<KeyRelease>", on_change)
+    
+    widgets['freq_to'] = ctk.CTkEntry(f_freq, width=80, placeholder_text="До", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['freq_to'].pack(side="left", padx=5)
+    widgets['freq_to'].bind("<KeyRelease>", on_change)
+
+    # Кеш
+    ctk.CTkLabel(main_scroll, text="Об'єм кешу L3 (МБ)", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20)
+    f_cache = ctk.CTkFrame(main_scroll, fg_color="transparent")
+    f_cache.pack(pady=(0, 10))
+    
+    widgets['cache_from'] = ctk.CTkEntry(f_cache, width=80, placeholder_text="Від", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['cache_from'].pack(side="left", padx=5)
+    widgets['cache_from'].bind("<KeyRelease>", on_change)
+    
+    widgets['cache_to'] = ctk.CTkEntry(f_cache, width=80, placeholder_text="До", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['cache_to'].pack(side="left", padx=5)
+    widgets['cache_to'].bind("<KeyRelease>", on_change)
+
+    # Сокет
+    ctk.CTkLabel(main_scroll, text="Тип роз'єму", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20, pady=(5,5))
+    socket_list = ["AM5", "AM4", "LGA1700"] 
+    widgets['sockets'] = {}
+    for sock in socket_list:
+        chk = ctk.CTkCheckBox(main_scroll, text=sock, font=("Lato", 16), 
+                               text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        chk.pack(anchor="w", padx=30, pady=2)
+        widgets['sockets'][sock] = sock_chk = chk # Збереження у словник для фільтрації
+
+    # --- КНОПКА ОЧИСТИТИ ---
+    # Тепер вона знаходиться всередині скрол-зони в самому кінці
+    add_clear_button(main_scroll, reset_command)
+
+
+def parse_mb_specs(spec_str):
+    try:
+        parts = spec_str.split(" / ")
+        if len(parts) < 5:
+            return None
+            
+        # parts[0]: "AM5" -> "AM5"
+        socket = parts[0].strip()
+        
+        # parts[1]: "B650" -> "B650"
+        chipset = parts[1].strip()
+        
+        # parts[2]: "4 слотів ОЗП" -> беремо перше слово "4"
+        slots = parts[2].strip().split()[0]
+        
+        # parts[3]: "ATX формфактор" -> беремо перше слово "ATX"
+        # Увага: на скріншоті є "mATX", "ATX", "E-ATX"
+        form_factor = parts[3].strip().split()[0]
+        
+        # parts[4]: "1 Wi-Fi" або "0 Wi-Fi" -> беремо перше слово "Так" або "Ні"
+        wifi_val = parts[4].strip().split()[0]
+        wifi = "Так" if wifi_val == "Так" else "Ні"
+        
+        return {
+            "socket": socket,
+            "chipset": chipset,
+            "slots": slots,
+            "form_factor": form_factor,
+            "wifi": wifi
+        }
+    except Exception as e:
+        print(f"Error parsing MB specs '{spec_str}': {e}")
+        return None
+
+
+def apply_advanced_mb_filter(widgets, tree, all_products):
+    global current_products
+    
+    # 1. Зчитуємо значення з інтерфейсу
+    try:
+        # Виробник (ASUS, MSI, Gigabyte...)
+        selected_vendors = [k for k, v in widgets['vendors'].items() if v.get()]
+        
+        # Сокети
+        selected_sockets = [k for k, v in widgets['sockets'].items() if v.get()]
+        
+        # Чіпсети
+        selected_chipsets = [k for k, v in widgets['chipsets'].items() if v.get()]
+        
+        # Слоти ОЗП (Dropdown)
+        sel_slots = widgets['slots'].get()
+        print("slots:   " + sel_slots)
+        
+        # Формфактор
+        selected_ff = [k for k, v in widgets['ff'].items() if v.get()]
+        
+        # WiFi
+        selected_wifi = [k for k, v in widgets['wifi'].items() if v.get()]
+        print("SELECTED WIFI")
+        print(selected_wifi)
+        
+    except ValueError:
+        return
+
+
+    filtered_list = []
+    
+    # 2. Фільтрація
+    for row in all_products:
+        category = row[4]
+        vendor = row[5] # Наприклад "ASUS"
+        specs_str = row[3]
+
+
+        if category != "Материнська плата":
+            continue
+            
+        # Фільтр виробника (нечутливий до регістру, про всяк випадок)
+        if selected_vendors:
+            # Якщо vendor в базі "ASUS", а ми шукаємо "Asus", приводимо до lower
+            vendor_match = False
+            for v_sel in selected_vendors:
+                if v_sel.lower() == vendor.lower():
+                    vendor_match = True
+                    break
+            if not vendor_match:
+                continue
+            
+        specs = parse_mb_specs(specs_str)
+
+        if not specs:
+            print("not specs")
+            continue
+            
+        # Socket
+        if selected_sockets and (specs['socket'] not in selected_sockets):
+            continue
+            
+        # Chipset (Точне співпадіння, бо ми взяли список з таблиці)
+        if selected_chipsets and (specs['chipset'] not in selected_chipsets):
+            continue
+
+        # Створюємо умовний список для порівняння. Якщо "Усі" — фільтр не активний.
+        if sel_slots and sel_slots != "Усі":
+            if specs.get('slots') not in [sel_slots]:
+                continue
+
+        # Form Factor ("ATX", "mATX", "E-ATX")
+        if selected_ff and (specs['form_factor'] not in selected_ff):
+            continue
+            
+        # Wifi ("Так" або "Ні")
+        if selected_wifi and (specs['wifi'] not in selected_wifi):
+            continue
+
+        filtered_list.append(row)
+
+    # 3. Оновлення таблиці
+    current_products = filtered_list.copy()
+    tree.delete(*tree.get_children())
+    for item in current_products:
+        tree.insert("", "end", values=item)
+
+
+def build_mb_sidebar(parent_frame, tree, all_products, reset_command):
+    widgets = {}
+
+    def on_change(*args):
+        apply_advanced_mb_filter(widgets, tree, all_products)
+
+    # --- СТВОРЮЄМО ГОЛОВНИЙ СКРОЛ-ФРЕЙМ ---
+    # Він займає весь простір parent_frame
+    main_scroll = ctk.CTkScrollableFrame(
+        parent_frame, 
+        fg_color="transparent", 
+        label_text="", # Можна додати заголовок "Фільтри", якщо потрібно
+        scrollbar_button_color="#4A4A4A", # Колір повзунка
+        scrollbar_button_hover_color="#666666"
+    )
+    main_scroll.pack(fill="both", expand=True)
+    
+    # --- ВИРОБНИК ---
+    ctk.CTkLabel(main_scroll, text="Виробник", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    vendor_list = ["ASUS", "MSI", "Gigabyte"]
+    widgets['vendors'] = {}
+    for v in vendor_list:
+        chk = ctk.CTkCheckBox(main_scroll, text=v, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        chk.pack(anchor="w", padx=30, pady=2)
+        widgets['vendors'][v] = chk
+
+    # --- SOCKET ---
+    ctk.CTkLabel(main_scroll, text="Сокет", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    socket_list = ["AM5", "AM4", "LGA1700"] 
+    widgets['sockets'] = {}
+    for sock in socket_list:
+        chk = ctk.CTkCheckBox(main_scroll, text=sock, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        chk.pack(anchor="w", padx=30, pady=2)
+        widgets['sockets'][sock] = chk
+
+    # --- CHIPSET ---
+    ctk.CTkLabel(main_scroll, text="Чіпсет", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    chipset_list = ["B650", "B550", "B660", "B760", "X670", "X670E", "Z690", "Z790"]
+    widgets['chipsets'] = {}
+    # Тепер тут не потрібен внутрішній скрол, просто виводимо список
+    for chip in chipset_list:
+        chk = ctk.CTkCheckBox(main_scroll, text=chip, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        chk.pack(anchor="w", padx=30, pady=2)
+        widgets['chipsets'][chip] = chk
+
+    # --- RAM SLOTS ---
+    ctk.CTkLabel(main_scroll, text="Слоти ОЗП", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    widgets['slots'] = ctk.CTkComboBox(main_scroll, values=["Усі", "2", "4"], width=180, 
+                                       fg_color="#FFFFFF", text_color="#000000", dropdown_fg_color="#FFFFFF", dropdown_text_color="#000000", 
+                                       button_color="#FFFFFF", button_hover_color="#E0E0E0", border_width=0, command=on_change)
+    widgets['slots'].pack(pady=5)
+    widgets['slots'].set("")
+
+    # --- FORM FACTOR ---
+    ctk.CTkLabel(main_scroll, text="Формфактор", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    ff_list = ["ATX", "Micro-ATX", "E-ATX"]
+    widgets['ff'] = {}
+    for ff in ff_list:
+        chk = ctk.CTkCheckBox(main_scroll, text=ff, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        chk.pack(anchor="w", padx=30, pady=2)
+        widgets['ff'][ff] = chk
+
+    # --- WIFI ---
+    ctk.CTkLabel(main_scroll, text="Наявність Wi-Fi", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    widgets['wifi'] = {}
+    for status in ["Так", "Ні"]:
+        chk = ctk.CTkCheckBox(main_scroll, text=status, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        chk.pack(anchor="w", padx=30, pady=2)
+        widgets['wifi'][status] = chk
+
+    # --- КНОПКА ОЧИСТИТИ ---
+    # Додаємо кнопку очищення в кінець скрол-фрейму
+    add_clear_button(main_scroll, reset_command)
+
+def parse_gpu_specs(spec_str):
+    try:
+        parts = spec_str.split(" / ")
+        # Перевірка на цілісність даних (має бути 5 частин)
+        if len(parts) < 5:
+            return None
+            
+        # 1. VRAM: "24 ГБ" -> 24
+        vram_match = re.search(r'\d+', parts[0])
+        vram = int(vram_match.group()) if vram_match else 0
+        
+        # 2. Частота: "2520 МГц" -> 2520
+        freq_match = re.search(r'\d+', parts[1])
+        freq = int(freq_match.group()) if freq_match else 0
+        
+        # 3. Технології: рядок
+        tech = parts[2]
+        
+        # 4. TDP: "450 Вт" -> 450 (останній елемент)
+        tdp_match = re.search(r'\d+', parts[4])
+        tdp = int(tdp_match.group()) if tdp_match else 0
+        
+        return {
+            "vram": vram,
+            "freq": freq,
+            "tech": tech,
+            "tdp": tdp
+        }
+    except Exception as e:
+        print(f"Error parsing GPU specs '{spec_str}': {e}")
+        return None
+
+def apply_advanced_gpu_filter(widgets, tree, all_products):
+    global current_products
+    
+    try:
+        
+        # Виробник
+        selected_vendors = []
+        if widgets['vendor_nvidia'].get(): selected_vendors.append("NVIDIA")
+        if widgets['vendor_amd'].get(): selected_vendors.append("AMD")
+        
+        # VRAM (Обсяг пам'яті)
+        selected_vram = [int(k) for k, v in widgets['vram'].items() if v.get()]
+        
+        # Частота
+        freq_min = float(widgets['freq_from'].get()) if widgets['freq_from'].get() else 0
+        freq_max = float(widgets['freq_to'].get()) if widgets['freq_to'].get() else 10000
+        
+        # Технології
+        # Якщо обрано DLSS3, то рядок характеристик має містити "DLSS3"
+        req_tech = [k for k, v in widgets['tech'].items() if v.get()]
+        
+        # TDP
+        tdp_min = float(widgets['tdp_from'].get()) if widgets['tdp_from'].get() else 0
+        tdp_max = float(widgets['tdp_to'].get()) if widgets['tdp_to'].get() else 2000
+
+    except ValueError:
+        return
+
+    filtered_list = []
+    
+    for row in all_products:
+        category = row[4]
+        vendor = row[5]
+        specs_str = row[3]
+
+        if category != "Відеокарта":
+            continue
+            
+        if selected_vendors and (vendor not in selected_vendors):
+            continue
+            
+        specs = parse_gpu_specs(specs_str)
+        if not specs:
+            continue
+            
+        # VRAM
+        if selected_vram and (specs['vram'] not in selected_vram):
+            continue
+            
+        # Frequency
+        if not (freq_min <= specs['freq'] <= freq_max):
+            continue
+            
+        # Tech (Логіка: якщо обрано чекбокс, ця технологія МАЄ бути в списку)
+        if req_tech:
+            has_tech = False
+            for t in req_tech:
+                if t in specs['tech']:
+                    has_tech = True
+                    break
+            if not has_tech:
+                continue
+
+        # TDP
+        if not (tdp_min <= specs['tdp'] <= tdp_max):
+            continue
+            
+        filtered_list.append(row)
+
+    current_products = filtered_list.copy()
+    tree.delete(*tree.get_children())
+    for item in current_products:
+        tree.insert("", "end", values=item)
+
+
+def build_gpu_sidebar(parent_frame, tree, all_products, reset_command):
+    widgets = {}
+    
+    def on_change(*args):
+        apply_advanced_gpu_filter(widgets, tree, all_products)
+
+    # --- СТВОРЮЄМО ГОЛОВНИЙ СКРОЛ-ФРЕЙМ ---
+    # Обгортка для всього контенту сайдбару
+    main_scroll = ctk.CTkScrollableFrame(
+        parent_frame, 
+        fg_color="transparent",
+        scrollbar_button_color="#4A4A4A",
+        scrollbar_button_hover_color="#666666"
+    )
+    main_scroll.pack(fill="both", expand=True)
+
+    # --- ВИРОБНИК ---
+    ctk.CTkLabel(main_scroll, text="Виробник чіпа", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(10, 5))
+    widgets['vendor_nvidia'] = ctk.CTkCheckBox(main_scroll, text="NVIDIA", text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+    widgets['vendor_nvidia'].pack(anchor="w", padx=30, pady=2)
+    
+    widgets['vendor_amd'] = ctk.CTkCheckBox(main_scroll, text="AMD", text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+    widgets['vendor_amd'].pack(anchor="w", padx=30, pady=2)
+
+    # --- VRAM (Відеопам'ять) ---
+    ctk.CTkLabel(main_scroll, text="Відеопам'ять (ГБ)", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    vram_options = ["24", "16", "12", "10", "8", "6"]
+    widgets['vram'] = {}
+    f_vram = ctk.CTkFrame(main_scroll, fg_color="transparent")
+    f_vram.pack(fill="x", padx=10)
+    
+    for i, v in enumerate(vram_options):
+        chk = ctk.CTkCheckBox(f_vram, text=f"{v} ГБ", width=60, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        row = i // 2
+        col = i % 2
+        chk.grid(row=row, column=col, sticky="w", padx=10, pady=5)
+        widgets['vram'][v] = chk
+
+    # --- ЧАСТОТА ---
+    ctk.CTkLabel(main_scroll, text="Частота (МГц)", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    f_freq = ctk.CTkFrame(main_scroll, fg_color="transparent")
+    f_freq.pack(pady=5)
+    
+    widgets['freq_from'] = ctk.CTkEntry(f_freq, width=80, placeholder_text="Від", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['freq_from'].pack(side="left", padx=5)
+    widgets['freq_from'].bind("<KeyRelease>", on_change)
+    
+    widgets['freq_to'] = ctk.CTkEntry(f_freq, width=80, placeholder_text="До", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['freq_to'].pack(side="left", padx=5)
+    widgets['freq_to'].bind("<KeyRelease>", on_change)
+
+    # --- ТЕХНОЛОГІЇ ---
+    ctk.CTkLabel(main_scroll, text="Технології", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    tech_list = ["DLSS3", "DLSS2", "RayTracing"]
+    widgets['tech'] = {}
+    for t in tech_list:
+        chk = ctk.CTkCheckBox(main_scroll, text=t, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)
+        chk.pack(anchor="w", padx=30, pady=2)
+        widgets['tech'][t] = chk
+
+    # --- TDP ---
+    ctk.CTkLabel(main_scroll, text="TDP (Вт)", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
+    f_tdp = ctk.CTkFrame(main_scroll, fg_color="transparent")
+    f_tdp.pack(pady=5)
+    
+    widgets['tdp_from'] = ctk.CTkEntry(f_tdp, width=80, placeholder_text="Від", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['tdp_from'].pack(side="left", padx=5)
+    widgets['tdp_from'].bind("<KeyRelease>", on_change)
+    
+    widgets['tdp_to'] = ctk.CTkEntry(f_tdp, width=80, placeholder_text="До", fg_color="#FFFFFF", text_color="#000000", border_width=0)
+    widgets['tdp_to'].pack(side="left", padx=5)
+    widgets['tdp_to'].bind("<KeyRelease>", on_change)
+
+    # --- КНОПКА ОЧИСТИТИ ---
+    # Огортаємо кнопку очищення, щоб вона була в кінці списку, що прокручується
+    add_clear_button(main_scroll, reset_command)
+
+
+def update_left_panel(comb_category,category, left_frame, tree, all_products):
+    """
+    Очищає ліву панель і будує відповідні фільтри.
+    """
+    # 1. Видаляємо старі віджети (це і є очищення полів)
+    for widget in left_frame.winfo_children():
+        widget.destroy()
+    
+    # 2. Функція для повного скидання (передаємо її кнопці)
+    def reset_all():
+        global current_products
+        # Повертаємо список до початкового стану
+        current_products = all_products.copy()
+        
+        # Очищаємо таблицю і заповнюємо всіма продуктами
+        tree.delete(*tree.get_children())
+        for row in all_products:
+            if row[4] == category:
+                tree.insert("", "end", values=row)
+            
+        # Перебудовуємо панель (рекурсивний виклик, щоб очистити поля вводу)
+        update_left_panel(comb_category,category, left_frame, tree, all_products)
+
+    # 3. Будуємо нові панелі, передаючи функцію reset_all
+    if category == "Процесор":
+        build_cpu_sidebar(left_frame, tree, all_products, reset_all)
+        
+    elif category == "Відеокарта":
+        build_gpu_sidebar(left_frame, tree, all_products, reset_all)
+        
+    elif category == "Материнська плата":
+        build_mb_sidebar(left_frame, tree, all_products, reset_all)
+        
+    else:
+        pass
+
 
 # Function who filtered data in table by type category
-def filter_by_type(combobox, tree) -> None:
+def filter_by_type(combobox, tree, left_frame, all_products) -> None:
     global current_products
+
     # get choose
     choose = combobox.get()
+    
+    # --- НОВЕ: Оновлюємо ліву панель ---
+    update_left_panel(combobox,choose, left_frame, tree, all_products)
+    # -----------------------------------
 
     # remove all data in table, work faster than delete by row in for 
     tree.delete(*tree.get_children())
@@ -23,25 +649,20 @@ def filter_by_type(combobox, tree) -> None:
     filtered = []
 
     # save the data source for the table as current data 
-    sourse = current_products
+    # ВАЖЛИВО: Використовуємо all_products як базу, щоб скинути попередні фільтри
+    sourse = all_products 
 
     if choose == "Усі":
-        # we copy the current data, keeping in mind that current_products contains all the default data.
-        filtered = current_products.copy()
+        filtered = sourse.copy()
+    else:
+        filtered = [item for item in sourse if item[4] == choose]
 
-    if choose == "Процесор":
-        filtered = [item for item in sourse if item[4] == "Процесор"]
-
-    if choose == "Відеокарта":
-        filtered = [item for item in sourse if item[4] == "Відеокарта"]
-
-    if choose == "Материнська плата":
-        filtered = [item for item in sourse if item[4] == "Материнська плата"]
+    current_products = filtered.copy()
 
     # populate table with filtered data
-    tree.delete(*tree.get_children())
-    for row in tuple(filtered):
+    for row in tuple(current_products):
         tree.insert("", "end", values=row)
+
 
 
 # Function who filtere data by entered text from entry search
@@ -343,10 +964,10 @@ def Supply_window(*, app: ctk.CTk) -> None:
         dropdown_text_color="#000000",
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
-        values=["Усі","Процесор","Відеокарта","Материнська плата"],
-        command=lambda value: filter_by_type(combobox_category,tree_table)
+        values=["Усі","Процесор","Відеокарта","Материнська плата"]
     )
     combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
+
 
      #Frame for variable sort
     frame_var_sort = ctk.CTkFrame(master=frame_top_widget,width=200,height=90,fg_color="transparent")
@@ -800,5 +1421,14 @@ def Supply_window(*, app: ctk.CTk) -> None:
             tree_table.insert("", "end", values=row)
             # DEFAULT value for current_products
             current_products.append(row)
+
+        combobox_category.configure(
+            command=lambda value: filter_by_type(
+                combobox_category, 
+                tree_table, 
+                frame_left_widget, 
+                all_products
+            )
+        )
     except:
         print("We have a problem with get data about product in Purchase Frame")
