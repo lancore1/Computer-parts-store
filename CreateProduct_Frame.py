@@ -137,8 +137,8 @@ def Create_product_window(*, app: ctk.CTk) -> None:
         width=115,
         height=39,
         corner_radius=5,
-        fg_color="#FFB030",
-        hover_color="#FF9933",
+        fg_color="#FF3C00",
+        hover_color="#E32600",
         font=("Lato", 14, "bold"),
         compound="right",
         command=lambda:get_back(APP=app)
@@ -225,7 +225,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
         values=["Процесор","Відеокарта", "Материнська плата", ]
     )
     combobox_category.grid(row=1,column=0)
-
+    combobox_category.set("")
 
     #Frame for combobox from vendor
     frame_vendor = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
@@ -254,6 +254,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
         values=get_vendor_list()
     )
     combobox_vendor.grid(row=1,column=0)
+    combobox_vendor.set("")
 
     #Frame for product name
     frame_product_name = ctk.CTkFrame(master=frame_for_non_adaptive_element,fg_color="transparent")
@@ -634,8 +635,8 @@ def Create_product_window(*, app: ctk.CTk) -> None:
         width=230, 
         height=68,
         corner_radius=5,
-        fg_color="#FFB030",
-        hover_color="#FF9933",
+        fg_color="#C3B1E1",
+        hover_color="#A589D1",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
         command=lambda: create_product(combobox_category.get())
