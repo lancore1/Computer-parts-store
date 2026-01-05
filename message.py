@@ -6,18 +6,28 @@ def message_window(parent,label,message:str) -> None:
     win_error = ctk.CTkToplevel(master=parent)     
     win_error.title("Повідомлення")
     win_error.configure(fg_color="#00BFFF")
-    # const of value size window error 
+    
     WIDTH = 432
     HEIGHT = 190
 
-    win_error.geometry(f"{WIDTH}x{HEIGHT}")
-    # centered our window 
-    x = (win_error.winfo_screenwidth() - win_error.winfo_width()) // 2
-    y = (win_error.winfo_screenheight() - win_error.winfo_height()) // 2
+
+    win_error.resizable(False, False)
+    win_error.update_idletasks()
+
+    parent_x = parent.winfo_rootx()
+    parent_y = parent.winfo_rooty()
+    parent_width = parent.winfo_width()
+    parent_height = parent.winfo_height()
+
+    x = parent_x + (parent_width // 2) - (WIDTH // 2)
+    y = parent_y + (parent_height // 2) - (HEIGHT // 2)
 
     win_error.geometry(f"{WIDTH}x{HEIGHT}+{x}+{y}")
-    # Modal window
+    
+
+    win_error.after(10, win_error.focus_force)
     win_error.grab_set()
+
 
     # Frame Container
     frame_container = ctk.CTkFrame(master=win_error,width=WIDTH,height=HEIGHT,fg_color="#ffffff")
