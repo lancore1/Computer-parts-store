@@ -1169,6 +1169,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         corner_radius=5,
         fg_color="#34D399",
         hover_color="#2ECC71",
+        text_color="#FFFFFF", 
         font=("Lato", 14, "bold"),
         compound="right",
         command=lambda:get_back(APP=app) 

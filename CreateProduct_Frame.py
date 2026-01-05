@@ -137,8 +137,9 @@ def Create_product_window(*, app: ctk.CTk) -> None:
         width=115,
         height=39,
         corner_radius=5,
-        fg_color="#FF3C00",
-        hover_color="#E32600",
+        fg_color="#C3B1E1",
+        hover_color="#A589D1",
+        text_color="#FFFFFF", 
         font=("Lato", 14, "bold"),
         compound="right",
         command=lambda:get_back(APP=app)

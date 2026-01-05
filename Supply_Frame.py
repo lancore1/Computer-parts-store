@@ -1092,8 +1092,9 @@ def Supply_window(*, app: ctk.CTk) -> None:
         width=115,
         height=39,
         corner_radius=5,
-        fg_color="#34D399",
-        hover_color="#2ECC71",
+        fg_color="#FFB030",
+        hover_color="#FF9933",
+        text_color="#FFFFFF", 
         font=("Lato", 14, "bold"),
         compound="right",
         command=lambda:get_back(APP=app) 
@@ -1327,8 +1328,8 @@ def Supply_window(*, app: ctk.CTk) -> None:
         width=230,
         height=68,
         corner_radius=5,
-        fg_color="#34D399",
-        hover_color="#2ECC71",
+        fg_color="#FFB030",
+        hover_color="#FF9933",
         font=("Lato", 24, "bold"),
         text_color="#FFFFFF",
         command=lambda:on_supply_click()
