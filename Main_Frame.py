@@ -7,11 +7,10 @@ import global_state
 import globalQuery
 import re
 
+
 current_products = []  # stores current table data for filtering
 
 
-
-# --- НОВІ ФУНКЦІЇ ДЛЯ СОРТУВАННЯ ТА ЛІВОЇ ПАНЕЛІ ---
 def add_clear_button(parent_frame, command):
     btn = ctk.CTkButton(parent_frame, text="Очистити фільтри", 
                         fg_color="#FF3333", hover_color="#CC0000", text_color="white",
@@ -721,7 +720,6 @@ def sort_by_cost(combobox, tree) -> None:
 
 
 # Function who filtered data in table by type category
-# Змінена версія для інтеграції з sidebar
 def filter_by_type(combobox, tree, left_frame, all_products) -> None:
     global current_products
 
@@ -738,8 +736,6 @@ def filter_by_type(combobox, tree, left_frame, all_products) -> None:
     # saved data who filtered 
     filtered = []
 
-    # save the data source for the table as current data 
-    # ВАЖЛИВО: Використовуємо all_products як базу, щоб скинути попередні фільтри
     sourse = all_products 
 
     if choose == "Усі":
@@ -871,8 +867,7 @@ def Main_window(*, app: ctk.CTk) -> None:
         dropdown_text_color="#000000",
         dropdown_font=("Lato", 14, "normal"),
         dropdown_hover_color="#E5E5E5",
-        values=["Усі","Процесор","Відеокарта","Материнська плата"],
-        # command=lambda value: filter_by_type(combobox_category,tree_table)
+        values=["Усі","Процесор","Відеокарта","Материнська плата"]
     )
     combobox_category.grid(row=1,column=0,padx=(25,0), pady=(19,0))
 
@@ -1000,7 +995,7 @@ def Main_window(*, app: ctk.CTk) -> None:
     button_create_prod = ctk.CTkButton(
         master=frame_add_container,
         text="Додавання",
-        width=115, # Робимо її ширшою, оскільки вона одна в рядку
+        width=115,
         height=39,
         corner_radius=5,
         fg_color="#C3B1E1",
@@ -1118,7 +1113,6 @@ def Main_window(*, app: ctk.CTk) -> None:
             # DEFAULT value for current_products
             current_products.append(row)
             
-        # --- НОВЕ: Перепризначаємо команду комбобоксу, тепер коли у нас є всі змінні ---
         combobox_category.configure(
             command=lambda value: filter_by_type(
                 combobox_category, 
@@ -1127,7 +1121,7 @@ def Main_window(*, app: ctk.CTk) -> None:
                 all_products
             )
         )
-        # ------------------------------------------------------------------------------
+
 
     except:
         print("We have a problem with get data about product in Main_Frame")

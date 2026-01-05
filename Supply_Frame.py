@@ -4,12 +4,12 @@ import customtkinter as ctk
 from DB_connector import CONNECT
 import global_state # for get login 
 from globalQuery import QUERY_SUPPLIER, QUERY_SUPPLY
+import re
 
 
-
+all_products = [] # stored all product
 current_products = []  # stores current table data for filtering
 
-import re
 
 # --- НОВІ ФУНКЦІЇ ДЛЯ СОРТУВАННЯ ТА ЛІВОЇ ПАНЕЛІ ---
 def add_clear_button(parent_frame, command):
@@ -632,37 +632,26 @@ def update_left_panel(comb_category,category, left_frame, tree, all_products):
 
 
 # Function who filtered data in table by type category
-def filter_by_type(combobox, tree, left_frame, all_products) -> None:
-    global current_products
+def filter_by_type(combobox, tree, left_frame) -> None: # Убрали all_products из аргументов
+    global current_products, all_products
 
-    # get choose
     choose = combobox.get()
     
-    # --- НОВЕ: Оновлюємо ліву панель ---
-    update_left_panel(combobox,choose, left_frame, tree, all_products)
-    # -----------------------------------
+    # Обновляем левую панель (передаем актуальные данные)
+    update_left_panel(combobox, choose, left_frame, tree, all_products)
 
-    # remove all data in table, work faster than delete by row in for 
+    # Очищаем таблицу
     tree.delete(*tree.get_children())
 
-    # saved data who filtered 
-    filtered = []
-
-    # save the data source for the table as current data 
-    # ВАЖЛИВО: Використовуємо all_products як базу, щоб скинути попередні фільтри
-    sourse = all_products 
-
+    # Фильтруем свежие данные
     if choose == "Усі":
-        filtered = sourse.copy()
+        filtered = list(all_products)
     else:
-        filtered = [item for item in sourse if item[4] == choose]
+        filtered = [item for item in all_products if item[4] == choose]
 
     current_products = filtered.copy()
-
-    # populate table with filtered data
-    for row in tuple(current_products):
+    for row in current_products:
         tree.insert("", "end", values=row)
-
 
 
 # Function who filtere data by entered text from entry search
@@ -701,7 +690,7 @@ def search_by_entry(entry_search, tree) -> None:
 
 #Function who add data from current_products to cart
 def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
-        price:ctk.CTkEntry,state:int,suppli:ctk.CTkComboBox,table: ttk.Treeview) -> None:
+        price:ctk.CTkEntry,suppli:ctk.CTkComboBox,table: ttk.Treeview) -> None:
     from message import message_window
     global current_products
     product_id = id.get()
@@ -747,30 +736,11 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
             if int(row[0]) == product_id:  # if product exists
                 old_price = float(row[5])
                 print(old_price)
-                if state == 1:
-                    print(state)
-                    new_quantity = int(row[4]) + quantity
-                    new_row = [row[0], row[1], row[2], supplier, new_quantity, f"{old_price:.2f}",f"{old_price * new_quantity:.2f}"]
-                    table.delete(iid)
-                    table.insert("", "end", values=new_row)
-                    return
-                else:
-                    if not price_prod:
-                        message_window(APP, "Помилка!", "Введіть ціну постачі!")
-                        return
-                    try:
-                        price_prod = float(price_prod)
-                        if price_prod < 0:
-                            message_window(APP, "Помилка!", "Некоректні дані")
-                            return
-                    except ValueError:
-                        message_window(APP, "Помилка!", "Некоректні дані")
-                        return
-                    new_quantity = int(row[4]) + quantity
-                    new_row = [row[0], row[1], row[2], supplier, new_quantity, f"{price_prod:.2f}",f"{price_prod * new_quantity:.2f}"]
-                    table.delete(iid)
-                    table.insert("", "end", values=new_row)
-                    return
+                new_quantity = int(row[4]) + quantity
+                new_row = [row[0], row[1], row[2], supplier, new_quantity, f"{old_price:.2f}",f"{old_price * new_quantity:.2f}","-","+","🗑"]
+                table.delete(iid)
+                table.insert("", "end", values=new_row)
+                return
 
         #  if the product is not available we search for it in current_products
         for item in current_products:
@@ -787,7 +757,7 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
                     message_window(APP, "Помилка!", "Некоректні дані")
                     return
 
-                new_row = [item[0],item[1],item[2],supplier,quantity,f"{price_prod:.2f}",f"{price_prod * quantity:.2f}"]
+                new_row = [item[0],item[1],item[2],supplier,quantity,f"{price_prod:.2f}",f"{price_prod * quantity:.2f}","-","+","🗑"]
                 table.insert("", "end", values=new_row)
                 return
         print("Товар з таким ID не знайдено")
@@ -810,7 +780,7 @@ def make_supply(APP,
               table_basket:ttk.Treeview, tree_table:ttk.Treeview) -> None:
     from message import message_window
     from collections import defaultdict
-    global current_products
+    global current_products, all_products
 
     basket = [table_basket.item(row)["values"] for row in table_basket.get_children()]
 
@@ -872,13 +842,15 @@ def make_supply(APP,
     tree_table.delete(*tree_table.get_children())
     try:
         cursor_tab.execute(QUERY_SUPPLY)
-        all_products = cursor_tab.fetchall()
+        new_data = cursor_tab.fetchall()
         cursor_tab.close()
         CONNECT.commit()
+        all_products[:] = list(new_data) 
         current_products.clear()
         for row in all_products:
             tree_table.insert("", "end", values=row)
             current_products.append(row)
+            
     except Exception as e:
         print(f"Помилка оновлення таблиці: {e}")
 
@@ -910,8 +882,8 @@ def get_summary_from_basket(table:ttk.Treeview) -> str:
     basket = [table.item(row)["values"] for row in table.get_children()]
     for row in basket:
         print(row)
-        print(row[-1])
-        total += float(row[-1])
+        print(row[6])
+        total += float(row[6])
 
     return str(round(total,2))
 
@@ -1259,8 +1231,8 @@ def Supply_window(*, app: ctk.CTk) -> None:
     frame_cart.grid_rowconfigure(0, weight=1)
 
     # Columns for the cart
-    cart_columns = ("id", "name", "model", "supplier","quantity", "price", "total")
-    cart_titles = ["№", "Назва", "Модель", "Постачальник","Кількість", "Ціна", "Сума"]
+    cart_columns = ("id", "name", "model", "supplier","quantity", "price", "total","btn_minus", "btn_plus","btn_delete")
+    cart_titles = ["№", "Назва", "Модель", "Постачальник","Кількість", "Ціна", "Сума", "", "",""]
     # Table for cart 
     tree_cart = ttk.Treeview(master=frame_cart, columns=cart_columns, show="headings", height=6)
     
@@ -1283,6 +1255,9 @@ def Supply_window(*, app: ctk.CTk) -> None:
     tree_cart.column("quantity", width=100, anchor="center")
     tree_cart.column("price", width=150, anchor="e")
     tree_cart.column("total", width=150, anchor="e")
+    tree_cart.column("btn_minus", width=40, anchor="center")
+    tree_cart.column("btn_plus", width=40, anchor="center")
+    tree_cart.column("btn_delete", width=40, anchor="center")
 
       
     # ------------------ 4. ПАНЕЛЬ ОФОРМЛЕННЯ (Під кошиком) ------------------
@@ -1298,23 +1273,23 @@ def Supply_window(*, app: ctk.CTk) -> None:
     )
     frame_check_box_sale.pack(side="left", fill="y", padx=(0, 10))
 
-    # Checkbox for register or authorize client
-    checkbox_is_add = ctk.CTkCheckBox(
-        master=frame_check_box_sale,
-        text="Товар вже у кошику",
-        text_color="#000000",
-        text_color_disabled="#E90000",
-        font=("Lato", 16),
-        fg_color="#00BFFF",    
-        border_color="#00BFFF",
-        border_width=3,
-        corner_radius=5,
-        hover_color="#0080C0",
-        command=lambda:show_entry(checkbox_is_add.get(),frame_unit_price)
-    )
-    checkbox_is_add.pack(expand=True, anchor="center") 
+    # # Checkbox for register or authorize client
+    # checkbox_is_add = ctk.CTkCheckBox(
+    #     master=frame_check_box_sale,
+    #     text="Товар вже у кошику",
+    #     text_color="#000000",
+    #     text_color_disabled="#E90000",
+    #     font=("Lato", 16),
+    #     fg_color="#00BFFF",    
+    #     border_color="#00BFFF",
+    #     border_width=3,
+    #     corner_radius=5,
+    #     hover_color="#0080C0",
+    #     command=lambda:show_entry(checkbox_is_add.get(),frame_unit_price)
+    # )
+    # checkbox_is_add.pack(expand=True, anchor="center") 
 
-    # Frame for button checkout
+    # # Frame for button checkout
     frame_button_container = ctk.CTkFrame(
         master=frame_controls_checkout,
         height=68,
@@ -1408,9 +1383,79 @@ def Supply_window(*, app: ctk.CTk) -> None:
     label_summary = ctk.CTkLabel(master=frame_sum,textvariable=sum_var,text_color="#000000",font=("Lato", 16, "bold"))
     label_summary.pack(expand=True)
 
+    def on_cart_click(event):
+        region = tree_cart.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+
+        item_id = tree_cart.identify_row(event.y)
+        column = tree_cart.identify_column(event.x)
+        
+        if not item_id:
+            return
+
+        current_values = tree_cart.item(item_id).get("values")
+        
+        prod_id = int(current_values[0])
+        current_qty = int(current_values[4])
+        
+        product_data = None
+        for item in current_products:
+            if int(item[0]) == prod_id:
+                product_data = item
+                break
+        
+        if not product_data: return
+
+        max_stock = 25
+        new_qty = current_qty
+        
+        if column == "#8": 
+            if current_qty > 1:
+                new_qty -= 1
+            else:
+                return 
+
+        elif column == "#9": 
+            if current_qty < max_stock:
+                new_qty += 1
+            else:
+                from message import message_window
+                message_window(app,"Помилка!","Велика кількість товару!")
+                return
+        
+        elif column == "#10":
+            tree_cart.delete(item_id)
+            total_summary = get_summary_from_basket(tree_cart)
+            sum_var.set(f"Загальна сума: {total_summary} ₴")
+            return
+        else:
+            return
+
+        base_price = float(current_values[5])
+        final_sum = base_price * new_qty
+
+        updated_values = [
+            current_values[0],
+            current_values[1],
+            current_values[2],
+            current_values[3],
+            new_qty,
+            f"{base_price:.2f}",
+            f"{final_sum:.2f}",
+            "-",
+            "+",
+            "🗑"
+        ]
+        
+        tree_cart.item(item_id, values=updated_values)
+
+        total_summary = get_summary_from_basket(tree_cart)
+        sum_var.set(f"Загальна сума: {total_summary} ₴")
+
 
     def on_add_click() -> None:
-        add_data_to_card(app, entry_id, entry_quantity,entry_unit_price,checkbox_is_add.get(),combobox_supplier,tree_cart)
+        add_data_to_card(app, entry_id, entry_quantity,entry_unit_price,combobox_supplier,tree_cart)
         total = get_summary_from_basket(tree_cart)
         sum_var.set(f"Загальна сума: {total} ₴")
 
@@ -1423,14 +1468,18 @@ def Supply_window(*, app: ctk.CTk) -> None:
     def on_supply_click() -> None:
         total = get_summary_from_basket(tree_cart)
         try:
-            make_supply(app, tree_cart, tree_table)
+            make_supply(app, tree_cart, tree_table) 
+            filter_by_type(combobox_category, tree_table, frame_left_widget)
             sum_var.set("Загальна сума: 0 ₴")
         except Exception as e:
             print(f"Постачання скасовано: {e}")
-            sum_var.set(f"Загальна сума: {total} ₴")        
-            
-    
+            sum_var.set(f"Загальна сума: {total} ₴")       
+
+
+    tree_cart.bind("<ButtonRelease-1>", on_cart_click)
+
     try:
+        global all_products
         # Query for data in table
         cursor_tab = CONNECT.cursor(buffered=True)
         cursor_tab.execute(QUERY_SUPPLY) # exucutes an SQL query
@@ -1450,8 +1499,7 @@ def Supply_window(*, app: ctk.CTk) -> None:
             command=lambda value: filter_by_type(
                 combobox_category, 
                 tree_table, 
-                frame_left_widget, 
-                all_products
+                frame_left_widget
             )
         )
     except:
