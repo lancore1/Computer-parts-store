@@ -11,7 +11,6 @@ all_products = [] # stored all product
 current_products = []  # stores current table data for filtering
 
 
-# --- НОВІ ФУНКЦІЇ ДЛЯ СОРТУВАННЯ ТА ЛІВОЇ ПАНЕЛІ ---
 def add_clear_button(parent_frame, command):
     btn = ctk.CTkButton(parent_frame, text="Очистити фільтри", 
                         fg_color="#FF3333", hover_color="#CC0000", text_color="white",
@@ -77,9 +76,7 @@ def apply_advanced_cpu_filter(widgets, tree, all_products):
 
     filtered_list = []
     
-    # 2. Проходимо по всіх товарах і фільтруємо
     for row in all_products:
-        # row[4] = Category, row[5] = Vendor, row[8] = Cost, row[3] = Specs
         category = row[4]
         vendor = row[5]
         specs_str = row[3]

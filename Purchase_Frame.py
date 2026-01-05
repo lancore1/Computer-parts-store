@@ -1477,9 +1477,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
         if not item_id:
             return
 
-        # Отримуємо значення рядка
         current_values = tree_cart.item(item_id).get("values")
-        # Нова структура: [id, name, model, qty, price, total, "-", "+"]
         
         prod_id = int(current_values[0])
         current_qty = int(current_values[3])
@@ -1507,7 +1505,7 @@ def Purchase_window(*, app: ctk.CTk) -> None:
                 new_qty += 1
             else:
                 from message import message_window
-                message_window(app, "Увага", "Більше немає в наявності!")
+                message_window(app, "Помилка!", "Більше немає в наявності!")
                 return
         
         elif column == "#9":
