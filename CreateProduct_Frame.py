@@ -148,7 +148,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
 
     # Frame for user info
     frame_user = ctk.CTkFrame(master=frame_top_widget,width=200,height=65,fg_color="transparent")
-    frame_user.place(x=1380,y=30)
+    frame_user.place(relx=0.98, y=30, anchor="ne")
     frame_user.propagate(False)
 
     # User name
