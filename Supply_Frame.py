@@ -652,7 +652,7 @@ def filter_by_type(combobox, tree, left_frame) -> None: # Убрали all_produ
 
 
 # Function who filtere data by entered text from entry search
-def search_by_entry(entry_search, tree) -> None:
+def search_by_entry(entry_search, combobox, left_frame ,tree) -> None:
     global current_products
 
     cursor_tab = CONNECT.cursor()
@@ -662,7 +662,12 @@ def search_by_entry(entry_search, tree) -> None:
     cursor_tab.close()
     CONNECT.commit()
 
+    combobox.set("Усі")
+    choose = combobox.get()
+
     text = entry_search.get().lower().strip()
+
+    update_left_panel(combobox, choose, left_frame, tree, all_products)
 
     # clear table 
     tree.delete(*tree.get_children())
@@ -800,7 +805,7 @@ def make_supply(APP,
         for supplier, products in grouped_basket.items():
             cursor_tab.execute(f'''
                 call CreateSupply(
-                    '{1}',
+                    '{global_state.current_employee_login}',
                     '{supplier}', 
                     @supply_id
                 )
@@ -1042,7 +1047,7 @@ def Supply_window(*, app: ctk.CTk) -> None:
         bg_color="#D9D9D9",
         hover_color="#BFBFBF",
         corner_radius=20,
-        command=lambda: search_by_entry(entry_search,tree_table)
+        command=lambda: search_by_entry(entry_search,combobox_category,frame_left_widget,tree_table)
 
     )
     button_search.place(relx=0.90, rely=0.5, anchor="center")

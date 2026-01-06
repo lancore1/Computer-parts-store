@@ -10,7 +10,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 #     port=16533,
 #     user="avnadmin",
 #     password=DB_PASSWORD,
-#     database="Silicon_Store_DB"
+#     database="Silicon_Store_DB_TEST"
 # )
 
 #  for ltest

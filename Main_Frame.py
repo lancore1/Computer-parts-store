@@ -750,10 +750,15 @@ def filter_by_type(combobox, tree, left_frame, all_products) -> None:
         tree.insert("", "end", values=row)
 
 # Function who filtere data by entered text from entry search
-def search_by_entry(entry_search, tree, all_products) -> None:
+def search_by_entry(entry_search, combobox, left_frame, tree, all_products) -> None:
     global current_products
 
     text = entry_search.get().lower().strip()
+
+    combobox.set("Усі")
+    choose = combobox.get()
+
+    update_left_panel(combobox,choose, left_frame, tree, all_products)
 
     # clear table 
     tree.delete(*tree.get_children())
@@ -952,7 +957,7 @@ def Main_window(*, app: ctk.CTk) -> None:
         bg_color="#D9D9D9",
         hover_color="#BFBFBF",
         corner_radius=20,
-        command=lambda: search_by_entry(entry_search,tree_table,all_products)
+        command=lambda: search_by_entry(entry_search,combobox_category,frame_left_widget,tree_table,all_products)
 
     )
     button_search.place(relx=0.90, rely=0.5, anchor="center")
