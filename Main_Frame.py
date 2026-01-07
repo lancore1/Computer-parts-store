@@ -194,7 +194,7 @@ def build_cpu_sidebar(parent_frame, tree, all_products, reset_command):
     widgets['threads'].set("")
 
     # Тактова частота
-    ctk.CTkLabel(main_scroll, text="Тактова частота (GHz)", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20)
+    ctk.CTkLabel(main_scroll, text="Тактова частота (Ггц)", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20)
     f_freq = ctk.CTkFrame(main_scroll, fg_color="transparent")
     f_freq.pack(pady=(0, 10))
     
@@ -221,7 +221,7 @@ def build_cpu_sidebar(parent_frame, tree, all_products, reset_command):
 
     # Сокет
     ctk.CTkLabel(main_scroll, text="Тип роз'єму", font=("Lato", 16, "bold"), text_color="#FFFFFF").pack(anchor="w", padx=20, pady=(5,5))
-    socket_list = ["AM5", "AM4", "LGA1700"] 
+    socket_list = ["AM5", "AM4","LGA1851", "LGA1700"] 
     widgets['sockets'] = {}
     for sock in socket_list:
         chk = ctk.CTkCheckBox(main_scroll, text=sock, font=("Lato", 16), 
@@ -408,7 +408,7 @@ def build_mb_sidebar(parent_frame, tree, all_products, reset_command):
 
     # --- SOCKET ---
     ctk.CTkLabel(main_scroll, text="Сокет", font=("Lato", 18, "bold"), text_color="#FFFFFF").pack(pady=(15, 5))
-    socket_list = ["AM5", "AM4", "LGA1700"] 
+    socket_list = ["AM5", "AM4","LGA1851","LGA1700"] 
     widgets['sockets'] = {}
     for sock in socket_list:
         chk = ctk.CTkCheckBox(main_scroll, text=sock, text_color="#FFFFFF", fg_color="#FFFFFF", checkmark_color="#00BFFF", border_color="white", command=on_change)

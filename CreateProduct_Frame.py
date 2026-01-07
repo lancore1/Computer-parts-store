@@ -376,7 +376,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
                 font=("Lato", 16, "bold"))
     lbl_cache.grid(row=8, column=0, sticky="w", pady=(0, 4))
 
-    cpu_cache = ctk.CTkComboBox(cpu_frame, values=["8", "16", "32", "64"],
+    cpu_cache = ctk.CTkComboBox(cpu_frame, values=["4", "8","10","12", "16","18","20","24", "32","64"],
                                 width=170, height=35, corner_radius=8,
                                 border_color="#00BFFF", button_color="#00BFFF",
                                 text_color="#000000", fg_color="#FFFFFF",
@@ -402,7 +402,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
     lbl_gpu_freq = ctk.CTkLabel(gpu_frame, text="Частота GPU", text_color="#000000", 
                 font=("Lato", 16, "bold"))
     lbl_gpu_freq.grid(row=2, column=0, sticky="w", pady=4)
-    gpu_freq_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 2.5 GHz", 
+    gpu_freq_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 2.5 (GHz)", 
                                 width=275, height=35, corner_radius=10, border_width=2, 
                                 border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
                                 font=("Lato", 16), placeholder_text_color="#555555")
@@ -432,7 +432,7 @@ def Create_product_window(*, app: ctk.CTk) -> None:
     lbl_watt = ctk.CTkLabel(gpu_frame, text="Енергоспоживання", text_color="#000000", 
                 font=("Lato", 16, "bold"))
     lbl_watt.grid(row=8, column=0, sticky="w", pady=4)
-    gpu_tdp_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 280 W", 
+    gpu_tdp_entry = ctk.CTkEntry(gpu_frame, placeholder_text="напр. 280 (W)", 
                                 width=275, height=35, corner_radius=10, border_width=2, 
                                 border_color="#00BFFF", text_color="#000000", fg_color="transparent", 
                                 font=("Lato", 16), placeholder_text_color="#555555")
