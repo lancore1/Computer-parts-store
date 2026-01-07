@@ -794,10 +794,10 @@ def add_data_to_card(APP,entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, t
             quantity = int(quantity)
 
             if quantity < 0:
-                message_window(APP, "Помилка!", "Некоректні дані")
+                message_window(APP, "Помилка!", "Некоректні дані!")
                 return
         except:
-            message_window(APP, "Помилка!", "Некоректні дані")
+            message_window(APP, "Помилка!", "Некоректні дані!")
             return
 
         
@@ -813,32 +813,12 @@ def add_data_to_card(APP,entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, t
             print("Товар з таким ID не знайдено в current_products")
             return
 
-        max_quantity = int(product_data[7])  # available quantity in stock for a specific product_id
-
-
         # checking the product for duplicates
         for iid in table.get_children(): # iid have a unique id of row in table 
             row = table.item(iid)["values"]
             print(row)
-
             if int(row[0]) == product_id:  # if product exists
-                price = float(row[4])
-
-                new_quantity = int(row[3]) + quantity
-
-                # if new count biggest than max, we don't do anymore
-                if new_quantity > max_quantity:
-                    message_window(APP,"Помилка!","Немає такої кількості товару у наявності!")
-                    print("Немає такої кількості товару у наявності!")
-                    return
-                if new_quantity > 6:
-                    price = float(price*0.93)
-
-                new_sum = price * new_quantity
-                new_row = [row[0], row[1], row[2], new_quantity, f"{price:.2f}",f"{new_sum:.2f}","-","+","🗑"]
-
-                table.delete(iid)
-                table.insert("", "end", values=new_row)
+                message_window(APP,"Помилка!","Товар вже додано!")
                 return
 
         #  if the product is not available we search for it in current_products
@@ -860,8 +840,9 @@ def add_data_to_card(APP,entry_id: ctk.CTkEntry, entry_quantity: ctk.CTkEntry, t
     except ValueError:
         print("Помилка: неправильні дані")
     finally:
-        entry_id.delete(0, "end")
-        entry_quantity.delete(0, "end")
+        if str(product_id) or str(quantity):
+            entry_id.delete(0, "end")
+            entry_quantity.delete(0, "end")
 
 
 # Function who clear basket
@@ -938,7 +919,7 @@ def make_sale(APP,state:ctk.CTkCheckBox,cl_name:ctk.CTkEntry, cl_email:ctk.CTkEn
         # Save all changes
         CONNECT.commit()
         print(f"Продаж успішно завершено! ID чеку: {check_id}")
-        message_window(APP,"Успіх!",f"Продаж успішно завершено! Номер чеку:{check_id}")
+        message_window(APP,"Успіх!",f"Продаж успішно завершено! Номер чеку: {check_id}")
     except Exception as e:
         CONNECT.rollback()
         

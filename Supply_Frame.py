@@ -9,6 +9,7 @@ import re
 
 all_products = [] # stored all product
 current_products = []  # stores current table data for filtering
+list_supplier = [] # stored supplier in basket
 
 
 def add_clear_button(parent_frame, command):
@@ -694,11 +695,12 @@ def search_by_entry(entry_search, combobox, left_frame ,tree) -> None:
 def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
         price:ctk.CTkEntry,suppli:ctk.CTkComboBox,table: ttk.Treeview) -> None:
     from message import message_window
-    global current_products
+    global current_products, list_supplier
     product_id = id.get()
     quantity = qnt.get()
     price_prod = price.get()
     supplier = suppli.get()
+    list_supplier.append(supplier)
 
     try:
         
@@ -709,13 +711,13 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
             product_id = int(product_id)
             quantity = int(quantity)
         except:
-            message_window(APP, "Помилка!", "Некоректні дані")
+            message_window(APP, "Помилка!", "Некоректні дані!")
             return
         
         if quantity < 0:
-            message_window(APP, "Помилка!", "Некоректні дані")
+            message_window(APP, "Помилка!", "Некоректні дані!")
             return
-
+        
         product_data = None
         for item in current_products:
             if int(item[0]) == product_id:
@@ -736,12 +738,7 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
             row = table.item(iid)["values"]
             print(row)
             if int(row[0]) == product_id:  # if product exists
-                old_price = float(row[5])
-                print(old_price)
-                new_quantity = int(row[4]) + quantity
-                new_row = [row[0], row[1], row[2], supplier, new_quantity, f"{old_price:.2f}",f"{old_price * new_quantity:.2f}","-","+","🗑"]
-                table.delete(iid)
-                table.insert("", "end", values=new_row)
+                message_window(APP,"Помилка!","Товар вже додано!")
                 return
 
         #  if the product is not available we search for it in current_products
@@ -753,15 +750,19 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
                 try:
                     price_prod = float(price_prod)
                     if price_prod < 0:
-                        message_window(APP, "Помилка!", "Некоректні дані")
+                        message_window(APP, "Помилка!", "Некоректні дані!")
                         return
                 except ValueError:
-                    message_window(APP, "Помилка!", "Некоректні дані")
+                    message_window(APP, "Помилка!", "Некоректні дані!")
                     return
-
-                new_row = [item[0],item[1],item[2],supplier,quantity,f"{price_prod:.2f}",f"{price_prod * quantity:.2f}","-","+","🗑"]
-                table.insert("", "end", values=new_row)
-                return
+                if len(list(set(list_supplier))) == 1:
+                    new_row = [item[0],item[1],item[2],supplier,quantity,f"{price_prod:.2f}",f"{price_prod * quantity:.2f}","-","+","🗑"]
+                    table.insert("", "end", values=new_row)
+                    return
+                else:
+                    list_supplier.pop(-1)
+                    message_window(APP, "Помилка!", "Постачальники різні!")
+                    return
         print("Товар з таким ID не знайдено")
     except ValueError as e:
         print(f"Помилка: {e}")
@@ -773,8 +774,10 @@ def add_data_to_card(APP,id: ctk.CTkEntry,qnt: ctk.CTkEntry,
 
 # Function who clear basket
 def clear_basket(table:ttk.Treeview) -> None:
+    global list_supplier
     # clear table 
     table.delete(*table.get_children())
+    list_supplier.clear()
 
 
 # Function who make supply product
@@ -782,7 +785,7 @@ def make_supply(APP,
               table_basket:ttk.Treeview, tree_table:ttk.Treeview) -> None:
     from message import message_window
     from collections import defaultdict
-    global current_products, all_products
+    global current_products, all_products, list_supplier
 
     basket = [table_basket.item(row)["values"] for row in table_basket.get_children()]
 
@@ -831,6 +834,7 @@ def make_supply(APP,
                 ''')
         CONNECT.commit()
         message_window(APP, "Успіх!", "Постачання оформлено успішно!")
+        list_supplier.clear()
 
     except Exception as e:
         CONNECT.rollback()
