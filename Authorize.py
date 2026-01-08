@@ -1,15 +1,45 @@
 from PIL import Image
 import customtkinter as ctk
+from DB_connector import CONNECT
+from error_login import error_window
+from Main_Frame import *
+import global_state
 
 
-def validate_login_and_password(login:str,password:str) -> bool:
-    pass
+#Function who validate entered login and password 
+def validate_login_and_password(APP,login:str,password:str) -> None:
+
+    try:
+        # Create a cursor to execute SQL queries
+        cursor_auth = CONNECT.cursor()
+        # Query for validate input data, validate_login_password is a function created in SERVER!
+        query_tab = f'''
+            SELECT validate_login_password('{login}','{password}')
+        '''
+        cursor_auth.execute(query_tab) # exucutes an SQL query
+        # converts the response into a list of tuples, for example this one [(0,)] - the structure of the fetchall() who was been return
+        response = cursor_auth.fetchall() 
+
+        result = response[0][0] # first row and column we get a str who have a last_name of employee
+
+        if len(result) > 0:
+            global_state.curr_user_last_name  = result
+            global_state.current_employee_login = login
+            for widget in APP.winfo_children():
+                widget.destroy()
+
+            Main_window(app=APP)
+        else:
+            error_window(APP)
 
 
-def Authorize_window(*, app: ctk.CTk) -> None:
-    app.geometry("1280x800")
-    app.title("Авторизація")
-    app.configure(fg_color="#00BFFF")
+
+    except:
+        print("We have a problem with query or input data for validate in AUTH ")
+
+
+
+def Authorize_window(app) -> None:
 
     #Frame Container 
     frame_container = ctk.CTkFrame(master=app,
@@ -21,7 +51,7 @@ def Authorize_window(*, app: ctk.CTk) -> None:
         border_color="#e2e8f0"
     )
     frame_container.place(relx=0.5, rely=0.5, anchor="center")
-    frame_container.propagate(False) # Фрейм не змінює свої розміри залежно від його елементів всередині
+    frame_container.propagate(False) # The frame does not change its dimensions depending on its elements inside
 
     #Frame for Title
     frame_title = ctk.CTkFrame(master=frame_container,width=300, height=60,fg_color="transparent")
@@ -29,8 +59,11 @@ def Authorize_window(*, app: ctk.CTk) -> None:
     frame_title.propagate(False)
 
     #Image for title
-    img = Image.open("images/image_title.png")
-    image_title = ctk.CTkImage(light_image=img, dark_image=img,size=(50,50))
+    image_title = ctk.CTkImage(
+        light_image=Image.open("images/image_title.png"), 
+        dark_image=Image.open("images/image_title.png"),
+        size=(50,50)
+    )
 
     #Label for image
     label_img = ctk.CTkLabel(master=frame_title, text="", image=image_title)
@@ -104,15 +137,8 @@ def Authorize_window(*, app: ctk.CTk) -> None:
         fg_color="#00BFFF",
         text_color="#FFFFFF", 
         font=("Lato",24,"bold"),
-        hover_color="#28AAE2"
+        hover_color="#28AAE2",
+        command=lambda: validate_login_and_password(app,entry_login.get(),entry_password.get())
     )
     button_log_in.pack()
 
-
-
-
-
-if __name__ == "__main__":
-    APP = ctk.CTk()
-    Authorize_window(app = APP)
-    APP.mainloop()

@@ -1,0 +1,83 @@
+import customtkinter as ctk
+
+
+
+def error_window(parent) -> None:
+    win_error = ctk.CTkToplevel(master=parent)     
+    win_error.title("Помилка!")
+    win_error.configure(fg_color="#00BFFF")
+    # const of value size window error 
+    WIDTH = 432
+    HEIGHT = 190
+
+
+    win_error.resizable(False, False)
+    win_error.update_idletasks()
+
+    parent_x = parent.winfo_rootx()
+    parent_y = parent.winfo_rooty()
+    parent_width = parent.winfo_width()
+    parent_height = parent.winfo_height()
+
+    x = parent_x + (parent_width // 2) - (WIDTH // 2)
+    y = parent_y + (parent_height // 2) - (HEIGHT // 2)
+
+    win_error.geometry(f"{WIDTH}x{HEIGHT}+{x}+{y}")
+    
+
+    win_error.after(10, win_error.focus_force)
+    win_error.grab_set()
+
+    # Frame Container
+    frame_container = ctk.CTkFrame(master=win_error,width=WIDTH,height=HEIGHT,fg_color="#ffffff")
+    frame_container.place(rely=0.5,relx=0.5,anchor="center")
+
+    #Frame for label
+    frame_label = ctk.CTkFrame(master=frame_container,width=120,height=40,fg_color="transparent")
+    frame_label.place(rely=0.100,relx=0.050)
+
+    #Label for title
+    title_label = ctk.CTkLabel(master=frame_label,
+        width=109,
+        height=20,
+        text="Помилка!",
+        text_color="#EF4444",
+        fg_color="transparent",
+        font=("Lato",24,"bold")
+    )
+    title_label.place(rely=0.5,relx=0.5,anchor="center")
+
+    #Frame for text error
+    frame_text_error = ctk.CTkFrame(master=frame_container,width=310,height=40,fg_color="transparent")
+    frame_text_error.place(rely=0.380,relx=0.050)
+
+    #Label for text error
+    title_label = ctk.CTkLabel(master=frame_text_error,
+        width=310,
+        height=20,
+        text="Неправильний логін або пароль",
+        text_color="#000000",
+        fg_color="transparent",
+        font=("Lato",20,"normal")
+    )
+    title_label.place(rely=0.5,relx=0.5,anchor="center")
+
+    #Frame for button 
+    frame_button = ctk.CTkFrame(master=frame_container,width=270,height=60,fg_color="transparent")
+    frame_button.place(rely=0.800,relx=0.670,anchor="center")
+
+    #Entry login
+    button_try_again = ctk.CTkButton(master=frame_button,
+        width=250,
+        height=50,
+        corner_radius=25,
+        text="Спробувати ще раз",
+        fg_color="#00BFFF",
+        text_color="#FFFFFF", 
+        font=("Lato",20,"bold"),
+        hover_color="#28AAE2",
+        command=lambda:win_error.destroy()
+
+
+    )
+    button_try_again.place(rely=0.5,relx=0.5,anchor="center")
